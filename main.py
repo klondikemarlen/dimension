@@ -1,14 +1,13 @@
 # __version__ = "0.1"
 import kivy
+import kivy.app
+import kivy.uix.label
 kivy.require("1.10.0")  # replace with current kivy version!
 
-from kivy.app import App
-from kivy.uix.label import Label
 
-
-class TwoD(App):
+class TwoD(kivy.app.App):
     def build(self):
-        return Label(text="Hello World")
+        return kivy.uix.label.Label(text="Hello World")
 
 
 if __name__ == "__main__":

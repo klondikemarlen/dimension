@@ -1,13 +1,13 @@
 [app]
 
 # (str) Title of your application
-title = "My Application"
+title = "2D"
 
 # (str) Package name
-package.name = myapp
+package.name = two_d
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = org.test
+package.domain = two_d.ca
 
 # (str) Source code where the main.py live
 source.dir = .
@@ -49,10 +49,10 @@ requirements = kivy
 #presplash.filename = %(source.dir)s/data/presplash.png
 
 # (str) Icon of the application
-#icon.filename = %(source.dir)s/data/icon.png
+icon.filename = %(source.dir)s/data/icon.png
 
 # (str) Supported orientation (one of landscape, portrait or all)
-orientation = portrait
+orientation = all
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY

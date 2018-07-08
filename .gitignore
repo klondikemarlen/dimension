@@ -106,5 +106,6 @@ venv.bak/
 # remove pycharm junk.
 .idea
 # remove buildozer junk
-.buildozer/
-bin/
+.buildozer
+!buildozer.spec
+bin
