@@ -1,2 +1,2 @@
-# 2D
-A 2 dimensional - live - code language.
+# Dimension
+A 2 dimensional - live? - code language.

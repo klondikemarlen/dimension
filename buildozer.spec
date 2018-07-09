@@ -7,7 +7,7 @@ title = "2D"
 package.name = two_d
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = two_d.ca
+package.domain = org.two_d
 
 # (str) Source code where the main.py live
 source.dir = .
