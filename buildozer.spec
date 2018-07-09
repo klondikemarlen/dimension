@@ -1,13 +1,13 @@
 [app]
 
 # (str) Title of your application
-title = "2D"
+title = "Dimension"
 
 # (str) Package name
-package.name = two_d
+package.name = dimension
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = org.two_d
+package.domain = org.dimension
 
 # (str) Source code where the main.py live
 source.dir = .

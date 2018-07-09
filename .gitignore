@@ -109,3 +109,5 @@ venv.bak/
 .buildozer
 !buildozer.spec
 bin
+# remove logcat junk
+logcat.txt
