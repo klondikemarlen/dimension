@@ -1,0 +1,17 @@
+#:kivy 1.10.0
+
+<CodeBlock>:
+    selected: False
+    size: 200, 100
+    canvas:
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+
+<CodeEditor>:
+    block: code_block
+
+    CodeBlock:
+        id: code_block
+        center: root.center
