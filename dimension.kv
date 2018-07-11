@@ -2,13 +2,17 @@
 
 <CodeBlock>:
     selected: False
-    name: "Block 0"
+    name: "Block 1"
     size: 200, 100
     canvas:
         Rectangle:
             pos: self.pos
             size: self.size
-
+    Label:
+        pos: root.pos
+        size: root.size
+        color: [0, 0, 0, 1]
+        text: root.name
 
 <CodeEditor>:
     selected_block: None
