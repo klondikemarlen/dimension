@@ -8,6 +8,7 @@ class CodeBlock(Widget):
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
             self.selected = True
+            return True
 
     def on_touch_up(self, touch):
         self.selected = False
