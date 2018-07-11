@@ -1,7 +1,7 @@
 from kivy.uix.widget import Widget
 # from kivy.uix.floatlayout import FloatLayout
 from kivy.properties import ObjectProperty
-from code_block.widget import CodeBlock
+from dimension.code_block.widget import CodeBlock
 
 
 class CodeEditor(Widget):
