@@ -25,3 +25,4 @@
 10. I need to work out how to Reference Blocks without cloning them? e.g. `bar = foo()` 'foo' should be a reference to a function 'foo' defined elsewhere not a copy of that function. Any changes made locally should change the main version.
 11. I need to work out how to build using modular design with Kivy! I'm thinking I could use 'main.py' as a stub?
 12. Make these into Issues on GitHub?
+13. Make block size based on grid units? Rather than pixels? This would allow you to zoom in and out of the code. Blocks that were too small would simple be swallowed up by larger blocks when you scalle out.
