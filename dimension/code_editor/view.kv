@@ -3,6 +3,10 @@
 <CodeEditor>:
     selected_block: None
 
+    # Apparently I don't need to import the CodeBlock item here?
+    # Maybe I should though?
     CodeBlock:
         id: code_block
         center: root.center
+        # Code duplication ... work out how to put this in only one place.
+        scale_factor: root.width / 10

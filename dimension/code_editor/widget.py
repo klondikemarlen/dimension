@@ -1,3 +1,5 @@
+import pdb
+
 from kivy.uix.widget import Widget
 # from kivy.uix.floatlayout import FloatLayout
 from kivy.properties import ObjectProperty
@@ -10,7 +12,8 @@ class CodeEditor(Widget):
     def on_touch_down(self, touch):
         if touch.is_double_tap:
             block = CodeBlock(name="Block {}".format(len(self.children)+1))
-            block.center = (touch.x, touch.y)
+            block.scale_factor = self.width / 10
+            block.center = touch.pos
             self.add_widget(block)
 
         for child in self.children:
