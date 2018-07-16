@@ -1,17 +1,29 @@
 #:kivy 1.10.0
 
 <CodeEditor>:
+    scatter_plane: scatter_plane
     selected_block: None
     # Note to self :P use ':' instead of '=' for variable assignment
     grid_units: 100
     grid_scale: ((self.width / self.grid_units) * (self.height / self.grid_units)) // 4
     half_scale: self.grid_scale / 2
     block_scale: self.width / 10
+    blocks: []
+#    blocks: [code_block]
 
     # Apparently I don't need to import the CodeBlock item here?
     # Maybe I should though?
-    CodeBlock:
-        id: code_block
-        center: root.center
-        # Code duplication ... work out how to put this in only one place.
-        scale_factor: root.block_scale
+#    CodeBlock:
+#        id: code_block
+#        # Code duplication ... work out how to put this in only one place.
+#        scale_factor: root.block_scale
+#        center: root.center
+
+    ScatterPlane:
+        id: scatter_plane
+        do_rotation: False
+#        do_translation: False
+        apply_transform: root.apply_transform
+#        canvas:
+#            Rectangle:
+#                size: root.size

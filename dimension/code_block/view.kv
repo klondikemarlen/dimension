@@ -1,19 +1,24 @@
 #:kivy 1.10.0
 
 <CodeBlock>:
-    selected: False
     name: "Block 1"
+    selected: False
+    scatter: scatter
     default_width: 2
     default_height: 1
     default_size: self.default_width, self.default_height
     scale_factor: 100
     size: self.default_width * self.scale_factor, self.default_height * self.scale_factor
-    canvas:
-        Rectangle:
-            pos: self.pos
-            size: self.size
-    Label:
+
+    Scatter:
+        id: scatter
+        do_rotation: False
+#        do_scale: False
         pos: root.pos
-        size: root.size
-        color: [0, 0, 0, 1]
-        text: root.name
+        canvas:
+            Rectangle:
+                size: root.size
+        Label:
+            size: root.size
+            color: [0, 0, 0, 1]
+            text: root.name
