@@ -2,6 +2,11 @@
 
 <CodeEditor>:
     selected_block: None
+    # Note to self :P use ':' instead of '=' for variable assignment
+    grid_units: 100
+    grid_scale: ((self.width / self.grid_units) * (self.height / self.grid_units)) // 4
+    half_scale: self.grid_scale / 2
+    block_scale: self.width / 10
 
     # Apparently I don't need to import the CodeBlock item here?
     # Maybe I should though?
@@ -9,4 +14,4 @@
         id: code_block
         center: root.center
         # Code duplication ... work out how to put this in only one place.
-        scale_factor: root.width / 10
+        scale_factor: root.block_scale
