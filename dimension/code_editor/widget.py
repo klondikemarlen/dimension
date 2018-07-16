@@ -24,11 +24,7 @@ class CodeEditor(Widget):
             block.center = touch.pos
             self.add_widget(block)
             self.blocks.append(block)
-
-        for child in self.children:
-            if child.on_touch_down(touch):
-                # self.selected_block = child
-                break
+        return super(CodeEditor, self).on_touch_down(touch)
 
     def apply_transform(self, *args, **kwargs):
         for block in self.blocks:
