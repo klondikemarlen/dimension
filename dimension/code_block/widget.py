@@ -15,17 +15,20 @@ class CodeBlock(FloatLayout):
     default_size = ReferenceListProperty(default_width, default_height)
     scale_factor = NumericProperty(0)
 
-    # def on_touch_down(self, touch):
-    #     if self.collide_point(*touch.pos):
-    #         self.selected = True
-    #         return True
-    #
-    # def on_touch_up(self, touch):
-    #     self.selected = False
-    #
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            self.selected = True
+        return super(CodeBlock, self).on_touch_down(touch)
+
+    def on_touch_up(self, touch):
+        self.selected = False
+        return super(CodeBlock, self).on_touch_up(touch)
+
     # def on_touch_move(self, touch):
-    #     if self.selected:
-    #         self.center = self.center_x + touch.dx, self.center_y + touch.dy
+    #     if super(CodeBlock, self).on_touch_move(touch):
+    #         if self.selected:
+    #             self.center = self.center_x + touch.dx, self.center_y + touch.dy
+    #     return None
 
     def apply_transform(self, *args, **kwargs):
         self.scatter.apply_transform(*args, **kwargs)

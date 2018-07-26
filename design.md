@@ -14,4 +14,4 @@
 
 #### Raw Concept Notes:
 - Make these into Issues on GitHub.
-- I need to figure out how to make the ScatterPlane resize ... then puke all its children into a new Windows sized ScatterPlane. Thus resulting in having a ScatterPlane that is always the size of the outer widget ... but can still resize all of the widgets children/grandchildren.
+-

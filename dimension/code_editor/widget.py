@@ -16,15 +16,32 @@ class CodeEditor(Widget):
     block_scale = NumericProperty(0)
     blocks = ListProperty()
 
+    def set_selected_block(self, instance, value):
+        if value:
+            self.selected_block = instance
+            self.display_first(instance)
+        else:
+            self.selected_block = None
+
+    def display_first(self, block):
+        self.remove_widget(block)
+        self.add_widget(block)
+
     def on_touch_down(self, touch):
         if touch.is_double_tap:
             block = CodeBlock()
             block.name = "Block {}".format(len(self.blocks)+1)
             block.scale_factor = self.block_scale
             block.center = touch.pos
+            block.bind(selected=self.set_selected_block)
             self.add_widget(block)
             self.blocks.append(block)
         return super(CodeEditor, self).on_touch_down(touch)
+
+    # def on_touch_move(self, touch):
+    #     if super(CodeEditor, self).on_touch_move(touch):
+    #         return None
+    #     return None
 
     def apply_transform(self, *args, **kwargs):
         for block in self.blocks:
