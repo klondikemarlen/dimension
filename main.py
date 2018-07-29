@@ -1,4 +1,4 @@
-# __version__ = "0.2"
+# __version__ = "0.3"
 import kivy
 kivy.require("1.10.0")  # replace with current kivy version!
 
