@@ -9,6 +9,7 @@
     default_size: self.default_width, self.default_height
     scale_factor: 100
     size: self.default_width * self.scale_factor, self.default_height * self.scale_factor
+    size_hint: (None, None)
 
     Scatter:
         id: scatter
@@ -20,5 +21,6 @@
                 size: root.size
         Label:
             size: root.size
+            size_hint: (None, None)
             color: [0, 0, 0, 1]
             text: root.name

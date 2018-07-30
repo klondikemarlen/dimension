@@ -16,16 +16,13 @@ class CodeBlock(FloatLayout):
     scale_factor = NumericProperty(0)
 
     def on_touch_down(self, touch):
-        print("touch down")
-        if self.collide_point(*touch.pos):
-            print("Selected:", self.name)
+        if self.scatter.collide_point(*touch.pos):
             self.selected = True
         else:
             self.selected = False
         return super(CodeBlock, self).on_touch_down(touch)
 
     def on_touch_up(self, touch):
-        print("touch up")
         self.selected = False
         return super(CodeBlock, self).on_touch_up(touch)
 
@@ -37,5 +34,4 @@ class CodeBlock(FloatLayout):
     #     return super(CodeBlock, self).on_touch_move(touch)
 
     def apply_transform(self, *args, **kwargs):
-        print("apply_transform")
         self.scatter.apply_transform(*args, **kwargs)
