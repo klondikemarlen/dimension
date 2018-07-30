@@ -17,6 +17,7 @@ class CodeEditor(Widget):
     blocks = ListProperty()
 
     def set_selected_block(self, instance, value):
+        print("Selection changed to:", value)
         if value:
             self.selected_block = instance
             self.display_first(instance)
@@ -33,6 +34,7 @@ class CodeEditor(Widget):
             block.name = "Block {}".format(len(self.blocks)+1)
             block.scale_factor = self.block_scale
             block.center = touch.pos
+            # doesn't work all the time ...
             block.bind(selected=self.set_selected_block)
             self.add_widget(block)
             self.blocks.append(block)
