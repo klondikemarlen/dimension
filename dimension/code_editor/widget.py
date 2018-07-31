@@ -15,12 +15,30 @@ class CodeEditor(Widget):
     half_scale = NumericProperty(0)
     block_scale = NumericProperty(0)
     blocks = ListProperty()
+    others = ListProperty()
 
-    def display_first(self, block, _):
-        self.remove_widget(block)
-        self.add_widget(block)
+    def on_blocks(self, instance, value):
+        self.others = [child for child in self.children[:] if child not in self.blocks[:]]
+
+    def display_first(self, instance, value):
+        self.remove_widget(instance)
+        self.add_widget(instance)
+
+    def dispatch_to_blocks(self, event_name, touch):
+        for block in self.blocks[:]:
+            if block.dispatch(event_name, touch):
+                return True
+
+    def dispatch_to_other_children(self, event_name, touch):
+        """Send event to all children that aren't blocks."""
+        for child in self.others[:]:
+            if child.dispatch(event_name, touch):
+                return True
 
     def on_touch_down(self, touch):
+        print("Touch the Editor!")
+        if self.dispatch_to_blocks("on_touch_down", touch):
+            return True
         if touch.is_double_tap:
             block = CodeBlock()
             block.name = "Block {}".format(len(self.blocks)+1)
@@ -29,7 +47,7 @@ class CodeEditor(Widget):
             block.bind(selected=self.display_first)
             self.add_widget(block)
             self.blocks.append(block)
-        return super(CodeEditor, self).on_touch_down(touch)
+        return self.dispatch_to_other_children("on_touch_down", touch)
 
     # def on_touch_move(self, touch):
     #     if super(CodeEditor, self).on_touch_move(touch):

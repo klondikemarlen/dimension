@@ -1,6 +1,7 @@
 import pdb
 
 from kivy.uix.widget import Widget
+from kivy.uix.textinput import TextInput
 from kivy.uix.scatter import Scatter
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
@@ -8,7 +9,14 @@ from kivy.properties import BooleanProperty, ReferenceListProperty, NumericPrope
 
 
 class CodeBlock(FloatLayout):
+    """Basic code block entity.
+
+    NOTE: the codeblock never moves from its original location.
+    Only its Scatter object moves. Therefore all collision detection must be
+    against the Scatter object. I will hopefully fix that at some point ...
+    """
     scatter = ObjectProperty(None)
+    input_label = ObjectProperty(None)
     selected = BooleanProperty(False)
     default_width = NumericProperty(0)
     default_height = NumericProperty(0)
@@ -17,6 +25,10 @@ class CodeBlock(FloatLayout):
 
     def on_touch_down(self, touch):
         if self.scatter.collide_point(*touch.pos):
+            print("Touching a block!")
+            if touch.is_double_tap:
+                self.input_label.switch_mode()
+                return True
             self.selected = True
         else:
             self.selected = False

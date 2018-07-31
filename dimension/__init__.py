@@ -3,6 +3,7 @@ from kivy.app import App
 # Import components
 # import dimension.main_menu.widget
 # import dimension.code_block.widget
+from dimension.input_label.widget import InputLabel
 from dimension.code_editor.widget import CodeEditor
 
 

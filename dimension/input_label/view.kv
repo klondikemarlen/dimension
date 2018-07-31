@@ -1,0 +1,18 @@
+<SwappableInput@TextInput>:
+    size: 200, 100
+    size_hint: (1, 0.3)
+    color: [0, 0, 0, 1]
+<SwappableLabel@Label>:
+    color: [0, 0, 0, 1]
+
+<InputLabel@BoxLayout>:
+    label: label
+    input: None
+    name: "Block 1"
+    size: 200, 100
+    size_hint: (None, None)
+    SwappableLabel:
+        id: label
+        text: root.name
+        size: root.size
+        size_hint: root.size_hint

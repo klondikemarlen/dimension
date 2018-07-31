@@ -4,6 +4,7 @@
     name: "Block 1"
     selected: False
     scatter: scatter
+    input_label: input_label
     default_width: 2
     default_height: 1
     default_size: self.default_width, self.default_height
@@ -14,13 +15,13 @@
     Scatter:
         id: scatter
         do_rotation: False
-#        do_scale: False
         pos: root.pos
         canvas:
             Rectangle:
                 size: root.size
-        Label:
+        InputLabel:
+            id: input_label
             size: root.size
             size_hint: (None, None)
             color: [0, 0, 0, 1]
-            text: root.name
+            name: root.name
