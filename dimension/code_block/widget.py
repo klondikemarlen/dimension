@@ -25,7 +25,6 @@ class CodeBlock(FloatLayout):
 
     def on_touch_down(self, touch):
         if self.scatter.collide_point(*touch.pos):
-            print("Touching a block!")
             if touch.is_double_tap:
                 self.input_label.switch_mode()
                 return True

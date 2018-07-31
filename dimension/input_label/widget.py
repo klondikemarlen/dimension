@@ -23,7 +23,6 @@ class InputLabel(BoxLayout):
 
     def switch_mode(self):
         if self.label is not None:
-            print("Switching to TextInput mode.")
             self.remove_widget(self.label)
             self.label = None
 
@@ -33,12 +32,11 @@ class InputLabel(BoxLayout):
             self.input = input
             Clock.schedule_once(self.set_focus, 0.2)
         elif self.input is not None:
-            print("Switching to Label mode.")
             self.name = self.input.text
             self.remove_widget(self.input)
             self.input = None
 
-            label = SwappableLable(text=self.name, size=self.size, size_hint=self.size_hint)
+            label = SwappableLabel(text=self.name, size=self.size, size_hint=self.size_hint)
             self.add_widget(label)
             self.label = label
 
@@ -47,5 +45,5 @@ class SwappableInput(TextInput):
     pass
 
 
-class SwappableLable(Label):
+class SwappableLabel(Label):
     pass

@@ -36,7 +36,6 @@ class CodeEditor(Widget):
                 return True
 
     def on_touch_down(self, touch):
-        print("Touch the Editor!")
         if self.dispatch_to_blocks("on_touch_down", touch):
             return True
         if touch.is_double_tap:

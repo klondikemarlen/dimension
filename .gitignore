@@ -112,3 +112,4 @@ bin
 # remove logcat junk
 debug_log.txt
 kivyinstall
+/PyCharm_kv_completion.jar
