@@ -1,9 +1,6 @@
 import pdb
 
 from kivy.uix.widget import Widget
-from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
-from kivy.uix.scatter import ScatterPlane
 from kivy.properties import ObjectProperty, NumericProperty, ListProperty
 from dimension.code_block.widget import CodeBlock
 

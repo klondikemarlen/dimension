@@ -4,7 +4,13 @@ from kivy.app import App
 # import dimension.main_menu.widget
 # import dimension.code_block.widget
 from dimension.input_label.widget import InputLabel
+from dimension.code_block.widget import CodeBlock
 from dimension.code_editor.widget import CodeEditor
+
+from kivy.config import Config
+# Config.read("config.ini")
+Config.set('postproc', 'double_tap_time', '350')
+# Config.write()
 
 
 class DimensionApp(App):

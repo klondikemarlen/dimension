@@ -1,10 +1,6 @@
 import pdb
 
-from kivy.uix.widget import Widget
-from kivy.uix.textinput import TextInput
-from kivy.uix.scatter import Scatter
 from kivy.uix.floatlayout import FloatLayout
-from kivy.uix.gridlayout import GridLayout
 from kivy.properties import BooleanProperty, ReferenceListProperty, NumericProperty, ObjectProperty
 
 
