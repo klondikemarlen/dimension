@@ -5,6 +5,7 @@ from kivy.app import App
 # import dimension.code_block.widget
 from dimension.input_label.widget import InputLabel
 from dimension.code_block.widget import CodeBlock
+from dimension.start_block.widget import StartBlock
 from dimension.code_editor.widget import CodeEditor
 
 from kivy.config import Config

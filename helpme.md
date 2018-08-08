@@ -21,3 +21,25 @@ class MyWidget(Label):
             Clock.schedule_once(lambda dt: self.on_touch_down(touch, True))
             return super(MyWidget, self).on_touch_down(touch)
 ```
+
+## To add a new Component:
+1. make a new python package e.g. dimension/start_block
+2. add a 'dimension/start_block/view.kv' file.
+    ```python
+    <StartBlock>:
+        pass  # some code here.
+    ```
+3. add a 'dimension/start_block/widget.py' file.
+    ```python
+    from kivy.uix.layout import Widget
+    
+    
+    class StartBlock(Widget):
+        pass
+    ```
+4. Add an include statement in dimenstion/dimension.kv
+`#:include dimension/start_block/view.kv`
+5. Add an import statement in 'dimension/__init__.py'
+`from dimension.start_block.widget import StartBlock`
+
+**NOTE: the order of the includes and imports matter!**

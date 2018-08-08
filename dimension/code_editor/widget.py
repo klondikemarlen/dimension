@@ -13,6 +13,7 @@ class CodeEditor(Widget):
     block_scale = NumericProperty(0)
     blocks = ListProperty()
     others = ListProperty()
+    start_block = ObjectProperty
 
     def on_blocks(self, instance, value):
         self.others = [child for child in self.children[:] if child not in self.blocks[:]]

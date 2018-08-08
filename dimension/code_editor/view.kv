@@ -9,11 +9,11 @@
     half_scale: self.grid_scale / 2
     block_scale: self.width / 10
     blocks: []
+    start_block: start_block
 
-    canvas:
-        Rectangle:
-            size: 50, 50
-            pos: self.center
+    StartBlock:
+        id: start_block
+        center: root.center
 
     ScatterPlane:
         id: scatter_plane
