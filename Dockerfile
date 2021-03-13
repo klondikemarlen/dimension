@@ -10,12 +10,15 @@ RUN apt-get install -y g++
 RUN apt-get install -y make
 RUN curl -L https://git.io/n-install | bash -s -- -y
 
+ENV PATH="/root/n/bin:${PATH}"
 
 # Things I actually want
-RUN npm install -g yarn 
+RUN npm install -g yarn
+RUN npm install -g @vue/cli
+
+COPY . /code
 
 WORKDIR /code
-RUN yarn set version berry
 RUN yarn install
 
 CMD /bin/true
