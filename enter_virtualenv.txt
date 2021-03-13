@@ -1,3 +1,0 @@
-# Enter the virtualenv
-. kivyinstall/bin/activate
-# sudo is not required for pip when in virtual environment

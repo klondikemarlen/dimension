@@ -1,0 +1,9 @@
+{
+  "name": "Dimesion",
+  "version": "0.1.0",
+  "description": "A 2 dimensional - live? - code language.",
+  "main": "boot.js",
+  "repository": "https://github.com/klondikemarlen/Dimension",
+  "author": "Marlen Brunner",
+  "license": "MIT"
+}
