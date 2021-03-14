@@ -13,12 +13,13 @@ RUN curl -L https://git.io/n-install | bash -s -- -y
 ENV PATH="/root/n/bin:${PATH}"
 
 # Things I actually want
-RUN npm install -g yarn
+RUN npm install npm@latest -g
 RUN npm install -g @vue/cli
+RUN npm install -g yarn
 
 COPY . /code
 
 WORKDIR /code
 RUN yarn install
 
-CMD /bin/true
+CMD yarn serve
