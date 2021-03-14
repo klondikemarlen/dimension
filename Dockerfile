@@ -20,6 +20,6 @@ RUN npm install -g yarn
 COPY . /code
 
 WORKDIR /code
-RUN yarn install
+RUN yarn install --frozen-lockfile
 
 CMD yarn serve
