@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 # base packages
 RUN apt-get update -y
-RUN apt-get install -y apt-utils 
+RUN apt-get install -y apt-utils
 RUN apt-get install -y curl
 RUN apt-get install -y gcc
 RUN apt-get install -y git
