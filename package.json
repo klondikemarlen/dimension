@@ -1,52 +1,52 @@
 {
-  "name": "Dimesion",
-  "version": "0.1.0",
-  "private": true,
-  "description": "A 2 dimensional - live? - code language.",
-  "author": {
-    "name": "Marlen Brunner"
-  },
-  "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "test:unit": "vue-cli-service test:unit",
-    "lint": "vue-cli-service lint"
-  },
-  "main": "boot.js",
-  "dependencies": {
-    "core-js": "^3.6.5",
-    "register-service-worker": "^1.7.1",
-    "vue": "^3.0.0",
-    "vue-router": "^4.0.0-0"
-  },
-  "devDependencies": {
-    "@vue/cli-plugin-babel": "~4.5.0",
-    "@vue/cli-plugin-eslint": "~4.5.0",
-    "@vue/cli-plugin-pwa": "~4.5.0",
-    "@vue/cli-plugin-router": "~4.5.0",
-    "@vue/cli-plugin-unit-mocha": "~4.5.0",
-    "@vue/cli-service": "~4.5.0",
-    "@vue/compiler-sfc": "^3.0.0",
-    "@vue/eslint-config-prettier": "^6.0.0",
-    "@vue/test-utils": "^2.0.0-0",
-    "babel-eslint": "^10.1.0",
-    "chai": "^4.1.2",
-    "eslint": "^7.22.0",
-    "eslint-plugin-prettier": "^3.1.3",
-    "eslint-plugin-vue": "^7.7.0",
-    "prettier": "^1.19.1",
-    "sass": "^1.26.5",
-    "sass-loader": "^8.0.2"
-  },
-  "_id": "Dimesion@0.1.0",
-  "bugs": {
-    "url": "https://github.com/klondikemarlen/Dimension/issues"
-  },
-  "homepage": "https://github.com/klondikemarlen/Dimension#readme",
-  "license": "MIT",
-  "readme": "ERROR: No README data found!",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/klondikemarlen/Dimension.git"
-  }
+    "_id": "Dimesion@0.1.0",
+    "author": {
+        "name": "Marlen Brunner"
+    },
+    "bugs": {
+        "url": "https://github.com/klondikemarlen/Dimension/issues"
+    },
+    "dependencies": {
+        "core-js": "^3.6.5",
+        "register-service-worker": "^1.7.1",
+        "vue": "^3.0.0",
+        "vue-router": "^4.0.0-0"
+    },
+    "description": "A 2 dimensional - live? - code language.",
+    "devDependencies": {
+        "@vue/cli-plugin-babel": "~4.5.0",
+        "@vue/cli-plugin-eslint": "~4.5.0",
+        "@vue/cli-plugin-pwa": "~4.5.0",
+        "@vue/cli-plugin-router": "~4.5.0",
+        "@vue/cli-plugin-unit-mocha": "~4.5.0",
+        "@vue/cli-service": "~4.5.0",
+        "@vue/compiler-sfc": "^3.0.0",
+        "@vue/eslint-config-prettier": "^6.0.0",
+        "@vue/test-utils": "^2.0.0-0",
+        "babel-eslint": "^10.1.0",
+        "chai": "^4.1.2",
+        "eslint": "^7.22.0",
+        "eslint-plugin-prettier": "^3.1.3",
+        "eslint-plugin-vue": "^7.7.0",
+        "prettier": "^1.19.1",
+        "sass": "^1.26.5",
+        "sass-loader": "^8.0.2"
+    },
+    "homepage": "https://github.com/klondikemarlen/Dimension#readme",
+    "license": "MIT",
+    "main": "boot.js",
+    "name": "Dimesion",
+    "private": true,
+    "readme": "https://github.com/klondikemarlen/Dimension#readme",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/klondikemarlen/Dimension.git"
+    },
+    "scripts": {
+        "build": "vue-cli-service build",
+        "lint": "vue-cli-service lint",
+        "serve": "vue-cli-service serve",
+        "test:unit": "vue-cli-service test:unit"
+    },
+    "version": "0.1.0"
 }
