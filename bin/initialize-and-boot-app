@@ -8,6 +8,8 @@ initialize () {
 }
 
 boot () {
+    initialize
+
 	option_separator=$1
 	if [ "$option_separator" == "--" ]; then
 		shift

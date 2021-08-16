@@ -18,4 +18,4 @@ WORKDIR /code
 RUN chmod +x bin/*
 RUN chmod +x config/init/*
 
-CMD /bin/bash -c "bin/run-all -- yarn serve"
+CMD /bin/bash -c "bin/initialize-and-boot-app -- yarn serve"
