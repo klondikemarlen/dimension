@@ -1,4 +1,6 @@
-# dimension
+# Dimension
+
+A dream of a visual code editor.
 
 ## Project setup
 
@@ -10,12 +12,14 @@ npm install
 
 ```
 npm run serve
+npm run electron:serve
 ```
 
 ### Compiles and minifies for production
 
 ```
 npm run build
+npm run electron:build
 ```
 
 ### Lints and fixes files
