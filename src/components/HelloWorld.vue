@@ -1,5 +1,6 @@
 <script setup>
 import { parse } from "acorn"
+import { full } from "acorn-walk"
 
 // Acorn exports
 // export {
@@ -32,6 +33,10 @@ import { parse } from "acorn"
 
 import rawCode from "./../main.js?raw"
 const parsedCode = parse(rawCode, { ecmaVersion: 2020, sourceType: "module" })
+full(parsedCode, (node) => {
+	console.log(`There's a ${node.type} node at ${node.start}`)
+})
+
 const code = JSON.stringify(parsedCode, null, 2)
 
 defineProps({
