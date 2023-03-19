@@ -27,7 +27,12 @@ import { parse } from "acorn"
 //  version,
 // }
 
-const code = JSON.stringify(parse("1 + 1", { ecmaVersion: 2020 }), null, 2)
+// const modules = import.meta.glob("@/*.js", { as: "raw" })
+// console.log(Object.keys(modules))
+
+import rawCode from "./../main.js?raw"
+const parsedCode = parse(rawCode, { ecmaVersion: 2020, sourceType: "module" })
+const code = JSON.stringify(parsedCode, null, 2)
 
 defineProps({
 	msg: {
