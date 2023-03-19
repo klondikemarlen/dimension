@@ -1,9 +1,39 @@
 <script setup>
+import { parse } from "acorn"
+
+// Acorn exports
+// export {
+//  Node,
+//  Parser,
+//  Position,
+//  SourceLocation,
+//  TokContext,
+//  Token,
+//  TokenType,
+//  defaultOptions,
+//  getLineInfo,
+//  isIdentifierChar,
+//  isIdentifierStart,
+//  isNewLine,
+//  keywords as keywordTypes,
+//  lineBreak,
+//  lineBreakG,
+//  nonASCIIwhitespace,
+//  parse,
+//  parseExpressionAt,
+//  types as tokContexts,
+//  types$1 as tokTypes,
+//  tokenizer,
+//  version,
+// }
+
+const code = JSON.stringify(parse("1 + 1", { ecmaVersion: 2020 }), null, 2)
+
 defineProps({
-  msg: {
-    type: String,
-    required: true
-  }
+	msg: {
+		type: String,
+		required: true,
+	},
 })
 </script>
 
@@ -26,6 +56,9 @@ defineProps({
 				>Vue 3</a
 			>.
 		</h3>
+		<pre>
+      {{ code }}
+    </pre>
 	</div>
 </template>
 
