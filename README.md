@@ -2,51 +2,42 @@
 
 A dream of a visual code editor.
 
-## Project setup
+This template should help get you started developing with Vue 3 in Vite.
 
-```
+## Recommended IDE Setup
+
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+
+## Customize configuration
+
+See [Vite Configuration Reference](https://vitejs.dev/config/).
+
+## Project Setup
+
+```sh
 npm install
 ```
 
-### Compiles and hot-reloads for development
+### Compile and Hot-Reload for Development
 
-```
-npm run serve
-npm run electron:serve
+```sh
+npm run dev
 ```
 
-### Compiles and minifies for production
+### Compile and Minify for Production
 
-```
+```sh
 npm run build
-npm run electron:build
 ```
 
-### Lints and fixes files
+### Run Unit Tests with [Vitest](https://vitest.dev/)
 
+```sh
+npm run test:unit
 ```
+
+### Lint with [ESLint](https://eslint.org/)
+
+```sh
 npm run lint
 ```
-
-### Customize configuration
-
-See [Configuration Reference](https://cli.vuejs.org/config/).
-
-## Implementation
-
-### Front-End
-
-The front-end is running [Vue.js](https://vuejs.org/) with [Pug](https://pugjs.org/api/getting-started.html) via the [Vue CLI](https://cli.vuejs.org/).
-
-### Back-End
-
-The back-end is running [Node](https://nodejs.org/en/) in [Electron](https://electronjs.org/) via the [Vue CLI Electron Builder plugin](https://nklayman.github.io/vue-cli-plugin-electron-builder/guide/).
-
-### Pipeline
-
-The serve/build pipeline work as described in Vue CLI Electron Builder plugin's [How it works](https://nklayman.github.io/vue-cli-plugin-electron-builder/guide/guide.html#how-it-works).
-
-1. Render build: This phase calls `vue-cli-service build` with some custom configuration so it works properly with electron. (The render process is your standard app.)
-2. Main build: This phase is where VCP-Electron-Builder bundles your background file for the main process (`src/background.js`).
-3. Electron-builder build: This phase uses [electron-builder](https://www.electron.build/)
-   (opens new window) to turn your web app code into an desktop app powered by [Electron](https://electronjs.org/) (opens new window).
