@@ -1,9 +1,9 @@
 <script setup>
-import TheWelcome from '../components/TheWelcome.vue'
+import HelloWorld from "@/components/HelloWorld.vue"
 </script>
 
 <template>
-  <main>
-    <TheWelcome />
-  </main>
+	<main>
+		<HelloWorld msg="You did it!" />
+	</main>
 </template>
