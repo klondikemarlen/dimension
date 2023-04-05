@@ -71,17 +71,14 @@ onMounted(() => {
 </script>
 
 <template>
-	<div>
-		<div id="blockly-area"></div>
-		<div
-			id="blockly-container"
-			style="position: absolute"
-		></div>
-	</div>
+	<div
+		id="blockly-area"
+		class="h-full"
+	></div>
+	<div
+		id="blockly-container"
+		style="position: absolute"
+	></div>
 </template>
 
-<style scoped>
-#blockly-area {
-	min-height: 480px;
-}
-</style>
+<style scoped></style>
