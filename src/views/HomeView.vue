@@ -1,9 +1,9 @@
 <script setup>
-import HelloWorld from "@/components/HelloWorld.vue"
+import BlocklyComponent from "@/components/BlocklyComponent.vue"
 </script>
 
 <template>
 	<main>
-		<HelloWorld msg="You did it!" />
+		<BlocklyComponent />
 	</main>
 </template>
