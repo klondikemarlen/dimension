@@ -1,3 +1,5 @@
+import { fileURLToPath, URL } from "node:url"
+
 import { defineConfig } from "vite"
 import { VitePluginNode } from "vite-plugin-node"
 
@@ -15,7 +17,7 @@ export default defineConfig({
       adapter: "express",
 
       // tell the plugin where is your project entry
-      appPath: "./src/app.ts",
+      appPath: "@/app.ts",
 
       // Optional, default: 'viteNodeApp'
       // the name of named export of you app from the appPath file
@@ -50,4 +52,9 @@ export default defineConfig({
       swcOptions: {},
     }),
   ],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
 })
