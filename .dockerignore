@@ -1,0 +1,12 @@
+api/node_modules
+api/dist
+web/node_modules
+web/dist
+dist
+npm-debug.log
+node_modules
+docs
+
+/now.*
+/*.now.*
+**/now.*

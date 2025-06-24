@@ -6,4 +6,10 @@ tabWidth: 2
 semi: false
 singleQuote: false
 singleAttributePerLine: true
-useTabs: true
+useTabs: false
+printWidth: 100
+plugins:
+  - prettier-plugin-embed
+  - prettier-plugin-sql
+language: "postgresql"
+paramTypes: "{ named: [':'] }"

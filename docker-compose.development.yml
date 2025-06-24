@@ -1,0 +1,48 @@
+x-default-environment: &default-environment
+  NODE_ENV: development
+
+services:
+  api:
+    build:
+      context: ./api
+      dockerfile: development.Dockerfile
+    env_file:
+      - ./api/.env.development
+    environment:
+      <<: *default-environment
+    tty: true # allows attaching debugger, equivalent of docker exec -t
+    # stdin_open: true # equivalent of docker exec -i
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    volumes:
+      - ./api:/usr/src/api
+      - ./.gitignore:/usr/src/.gitignore
+      - ./.prettierrc.yaml:/usr/src/.prettierrc.yaml
+
+  web:
+    build:
+      context: ./web
+      dockerfile: development.Dockerfile
+    environment:
+      <<: *default-environment
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./web:/usr/src/web
+      - ./.gitignore:/usr/src/.gitignore
+      - ./.prettierrc.yaml:/usr/src/.prettierrc.yaml
+    depends_on:
+      - api
+
+  # For easily generating large PlantUML diagrams
+  # Not relevant to production environment.
+  # Accessible at http://localhost:9999
+  plantuml:
+    image: plantuml/plantuml-server:jetty
+    ports:
+      - 9999:8080
+    environment:
+      PLANTUML_LIMIT_SIZE: 8192
+    profiles:
+      - design
