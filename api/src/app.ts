@@ -1,7 +1,9 @@
 import express from "express"
 
+import router from "./router"
+
 export const app = express()
 
-// your beautiful code...
+app.use(router)
 
 export default app
