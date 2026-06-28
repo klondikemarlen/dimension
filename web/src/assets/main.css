@@ -1,35 +1,212 @@
 @import "./base.css";
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+  min-height: 100vh;
 }
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+.workspace {
+  min-height: 100vh;
+  padding: clamp(1rem, 2vw, 2rem);
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 3rem);
+  grid-template-columns: minmax(18rem, 0.38fr) minmax(0, 1fr);
+  align-items: stretch;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+.hero-panel,
+.spell-canvas {
+  border: 1px solid var(--color-border);
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  box-shadow: 0 28px 80px rgba(31, 21, 12, 0.18);
+}
+
+.hero-panel {
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 10ch;
+  margin: 0;
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 7vw, 7rem);
+  line-height: 0.86;
+}
+
+.hero-copy {
+  max-width: 44rem;
+  margin: 1.5rem 0 0;
+  color: var(--color-muted);
+  font-size: clamp(1rem, 1.4vw, 1.25rem);
+}
+
+.framework-grid {
+  margin: 2rem 0 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.framework-grid div {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: rgba(255, 248, 225, 0.54);
+}
+
+.framework-grid dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.framework-grid dd {
+  margin: 0.25rem 0 0;
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.spell-canvas {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.spell-canvas svg {
+  width: 100%;
+  min-height: min(74vh, 760px);
+  flex: 1;
+}
+
+.parchment {
+  fill: var(--color-parchment);
+  stroke: rgba(83, 56, 30, 0.28);
+  stroke-width: 2;
+}
+
+.scope-ring {
+  fill: none;
+  stroke: rgba(85, 54, 30, 0.22);
+}
+
+.scope-ring--outer {
+  stroke-width: 4;
+}
+
+.scope-ring--inner {
+  stroke-dasharray: 10 16;
+  stroke-width: 2;
+}
+
+.leyline {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+
+.leyline--data {
+  stroke: rgba(60, 38, 22, 0.72);
+}
+
+.leyline--response {
+  stroke: var(--color-response);
+  stroke-width: 5;
+}
+
+.leyline--error {
+  stroke: var(--color-error);
+  stroke-dasharray: 12 12;
+}
+
+.arrowhead {
+  fill: currentColor;
+  color: rgba(60, 38, 22, 0.82);
+}
+
+.rune {
+  outline: none;
+}
+
+.rune circle {
+  fill: rgba(255, 250, 232, 0.92);
+  stroke: var(--color-ink);
+  stroke-width: 3;
+}
+
+.rune text {
+  fill: var(--color-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.rune--focus circle:first-child {
+  stroke-width: 8;
+}
+
+.rune--dashed circle:first-child {
+  stroke-dasharray: 12 8;
+}
+
+.rune--policy circle:first-child {
+  fill: rgba(245, 225, 169, 0.88);
+}
+
+.rune--async circle:first-child {
+  fill: rgba(218, 241, 255, 0.88);
+}
+
+.rune--response circle:first-child {
+  fill: rgba(216, 240, 202, 0.9);
+}
+
+.rune--error circle:first-child {
+  fill: rgba(255, 220, 210, 0.92);
+  stroke: var(--color-error);
+}
+
+.async-halo {
+  fill: none !important;
+  stroke: var(--color-response) !important;
+  stroke-width: 2 !important;
+  opacity: 0.7;
+}
+
+.spell-canvas figcaption {
+  padding: 1rem 1.25rem 1.25rem;
+  display: grid;
+  gap: 0.25rem;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-muted);
+}
+
+.spell-canvas figcaption strong {
+  color: var(--color-heading);
+}
+
+@media (max-width: 980px) {
+  .workspace {
+    grid-template-columns: 1fr;
   }
-}
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+  .spell-canvas svg {
+    min-height: 58vh;
   }
 }
