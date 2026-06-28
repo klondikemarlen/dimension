@@ -140,30 +140,26 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 
 ### Current Branch State
 
-- **Committed:** The repository previously contained global agent rules and a static Dimension spell canvas.
+- **Committed:** `224875e` flattens project-local agent material into `agents/` and adds this plan artifact under `agents/plans/`.
 - **Staged:** Nothing should be staged before each atomic commit is prepared.
-- **Unstaged / Untracked:** The first intended slice is the flattened `agents/` layout plus this plan artifact.
+- **Unstaged / Untracked:** The current intended slice updates `agents/README.md`, `agents/plans/README.md`, and this execution-plan state to match WRAP's discovery-document pattern.
 
 ### Remaining Slices
 
-1. Flatten agent data and commit the plan artifact.
-   - Move `agents/global-rules/agents/*` to `agents/`.
-   - Remove the old nested `agents/global-rules/agents/` directory.
-   - Add this spec-first plan under `agents/plans/`.
-2. Align agent README files with WRAP's discovery-document pattern.
+1. Align agent README files with WRAP's discovery-document pattern.
    - Update `agents/README.md` to describe plans, workflows, templates, and references as source-of-truth pointers.
    - Update `agents/plans/README.md` to describe spec-first plans and the `Type, Title, Date.md` convention.
-3. Clean secret-bearing environment docs.
+2. Clean secret-bearing environment docs.
    - Remove the committed GitHub token value from `.envrc`.
    - Add safe example/documentation without credentials.
-4. Stabilize package-local checks.
+3. Stabilize package-local checks.
    - Fix frontend type-check errors.
    - Repair local dependency ownership outside versioned files.
    - Add missing API check scripts if needed.
-5. Define the shared graph contract.
+4. Define the shared graph contract.
    - Add source graph and visual graph types.
    - Add a named layout/transform step between parser and renderer.
-6. Connect import to read-only rendering.
+5. Connect import to read-only rendering.
    - Call `POST /graphs` from the web app.
    - Render returned visual graph.
    - Keep sample fixture as a demo path.
