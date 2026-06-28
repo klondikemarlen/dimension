@@ -1,0 +1,35 @@
+# Pull Request Management Workflow
+
+Use when creating or updating a pull request.
+
+## Required Inputs
+
+- Current branch name and base branch.
+- Diff or commit range being proposed.
+- Related issue/ticket URLs, if any.
+- Existing PR body, when updating.
+
+## Process
+
+1. Inspect repository status and preserve unrelated local work.
+2. Read the branch diff and recent commits before drafting text.
+3. Create or update a draft PR unless the user asks for ready-for-review.
+4. Write a PR body with these sections when applicable:
+   - Related links
+   - Context: why the change exists
+   - Implementation: what user-visible or maintainer-relevant behavior changed
+   - Screenshots: uploaded images, placeholders, or `N/A — <reason>.`
+   - Testing instructions
+5. Use testing instructions that a reviewer can run without branch-author context.
+6. Do not claim verification that was not performed.
+
+## Decision Rules
+
+- Preserve existing `Fixes`, `Closes`, or issue-link semantics unless asked to change them.
+- Prefer concise active language over file-by-file implementation summaries.
+- For UI changes, include screenshots or explain why screenshots do not apply.
+- If a project has a local PR template or workflow, follow it over this generic workflow.
+
+## Output Contract
+
+Return the PR URL, draft/review state, base/head branches, and any verification or blockers.

@@ -1,5 +1,6 @@
-require "tempfile"
 require "open3"
+require "shellwords"
+require "tempfile"
 
 ##
 # Supports fetching and editing PR descriptions from a full GitHub PR URL using SSH and GitHub CLI.
@@ -7,7 +8,10 @@ require "open3"
 # Example usage:
 #   - PullRequestEditor.edit_pull_request_description('https://github.com/icefoganalytics/travel-authorization/pull/218')
 class PullRequestEditor
-  # Edits the pull request description using GitHub CLI and VS Code
+  EDITOR = ENV.fetch("EDITOR", ENV.fetch("VISUAL", nil))
+  WAITING_GUI_EDITORS = %w[code codium cursor devin-desktop windsurf].freeze
+
+  # Edits the pull request description using GitHub CLI and the configured editor
   def self.edit_pull_request_description(pull_request_url)
     repo, pull_request_number = extract_repo_and_pull_request_number(pull_request_url)
 
@@ -21,7 +25,9 @@ class PullRequestEditor
       file.write(pull_request_body)
       file.flush
 
-      system("windsurf --wait #{file.path}")
+      editor_command = editor_command_for(file.path)
+
+      system(*editor_command)
 
       updated_pull_request_body = File.read(file.path)
 
@@ -34,6 +40,15 @@ class PullRequestEditor
   end
 
   private
+
+  def self.editor_command_for(file_path)
+    raise "No editor configured. Set EDITOR or VISUAL environment variable." if EDITOR.nil? || EDITOR.strip.empty?
+
+    editor_command = Shellwords.split(EDITOR)
+    executable = File.basename(editor_command.first)
+    editor_command << "--wait" if WAITING_GUI_EDITORS.include?(executable) && !editor_command.include?("--wait")
+    editor_command << file_path
+  end
 
   # Extracts the repository name and PR number from a full GitHub PR URL
   def self.extract_repo_and_pull_request_number(pull_request_url)
