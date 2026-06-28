@@ -73,7 +73,7 @@ Investigate the Dimension project, produce a concrete plan in the project agent-
   - `web npm run type-check` fails on missing `d3` type resolution and implicit `any` destructuring in `SpellCanvas.vue`.
   - `web npm run build` and `api npm run build` fail while Vite writes `.vite-temp` files under root-owned `node_modules` directories.
 - Security hygiene issue:
-  - `.envrc` contains a literal GitHub token value. The value must be removed from versioned files and rotated outside this repo.
+  - The local ignored `.envrc` contained a literal GitHub token value. Project setup should keep `.envrc` ignored and require token rotation outside this repo.
 
 ## Proposed Spec
 
@@ -124,7 +124,7 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 - Use WRAP's spec-first plan shape for new Dimension plans.
 - Keep the first product milestone read-only and source-backed.
 - Keep SVG + D3 as the renderer path per `docs/framework-decisions.md`.
-- Treat the committed token as a security cleanup item; never reproduce its value in docs, commits, or plan text.
+- Treat local token exposure as a security cleanup item; never reproduce its value in docs, commits, or plan text.
 
 ## Verification
 
@@ -140,26 +140,23 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 
 ### Current Branch State
 
-- **Committed:** `224875e` flattens project-local agent material into `agents/` and adds this plan artifact under `agents/plans/`.
+- **Committed:** `224875e` flattens project-local agent material into `agents/`; `f178152` documents spec-first agent plans and WRAP-style discovery READMEs.
 - **Staged:** Nothing should be staged before each atomic commit is prepared.
-- **Unstaged / Untracked:** The current intended slice updates `agents/README.md`, `agents/plans/README.md`, and this execution-plan state to match WRAP's discovery-document pattern.
+- **Unstaged / Untracked:** The current intended slice removes the committed `.envrc.example`, keeps the project `.envrc` ignore rule, and updates plan wording so no env example or credential placeholder is exposed.
 
 ### Remaining Slices
 
-1. Align agent README files with WRAP's discovery-document pattern.
-   - Update `agents/README.md` to describe plans, workflows, templates, and references as source-of-truth pointers.
-   - Update `agents/plans/README.md` to describe spec-first plans and the `Type, Title, Date.md` convention.
-2. Clean secret-bearing environment docs.
-   - Remove the committed GitHub token value from `.envrc`.
-   - Add safe example/documentation without credentials.
-3. Stabilize package-local checks.
+1. Clean secret-bearing environment docs.
+   - Keep `.envrc` ignored for local secrets.
+   - Do not commit `.envrc` examples or credential placeholders.
+2. Stabilize package-local checks.
    - Fix frontend type-check errors.
    - Repair local dependency ownership outside versioned files.
    - Add missing API check scripts if needed.
-4. Define the shared graph contract.
+3. Define the shared graph contract.
    - Add source graph and visual graph types.
    - Add a named layout/transform step between parser and renderer.
-5. Connect import to read-only rendering.
+4. Connect import to read-only rendering.
    - Call `POST /graphs` from the web app.
    - Render returned visual graph.
    - Keep sample fixture as a demo path.
@@ -170,7 +167,7 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 2. `agents/plans/README.md` - Plan artifact conventions.
 3. `agents/plans/Plan, Dimension Future Progress, 2026-06-28.md` - This plan.
 4. `agents/global-rules/` - Imported source snapshot that should not contain another `agents/` directory after flattening.
-5. `.envrc` - Contains credential material that must be removed without reproducing the value.
+5. `.gitignore` - Ensures `.envrc` stays local and unversioned.
 6. `docs/framework-decisions.md` - Existing stack and rendering decisions.
 7. `web/src/components/SpellCanvas.vue` - Current SVG renderer.
 8. `web/src/fixtures/usersControllerIndex.ts` - Current visual graph fixture.
