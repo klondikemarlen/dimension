@@ -2,6 +2,7 @@
 
 require_relative "./github_api"
 require_relative "./pull-request-editor"
+require "socket"
 
 class DevHelper
   # Support dashes in command names
@@ -18,6 +19,14 @@ class DevHelper
 
   REPLACE_PROCESS = "replace_process"
   WAIT_FOR_PROCESS = "wait_for_process"
+
+  PORT_ENV_FILE = ".dev-ports.env"
+  PORT_ENV_KEYS = %w[
+    DIMENSION_API_PORT
+    DIMENSION_API_DEBUG_PORT
+    DIMENSION_WEB_PORT
+    DIMENSION_PLANTUML_PORT
+  ].freeze
 
   # External Interface
   def self.call(*args)
@@ -53,6 +62,7 @@ class DevHelper
   end
 
   def up(*args, **kwargs)
+    ensure_development_ports!
     compose(*%w[up --remove-orphans], *args, **kwargs)
   end
 
@@ -250,11 +260,55 @@ class DevHelper
 
   def compose_command(*args, **kwargs)
     environment = kwargs.fetch(:environment, "development")
-    "cd #{project_root} && docker compose -f docker-compose.#{environment}.yml #{args.join(" ")}"
+    env_file = File.exist?(port_env_file_path) ? "--env-file #{port_env_file_path}" : nil
+    "cd #{project_root} && docker compose #{env_file} -f docker-compose.#{environment}.yml #{args.join(" ")}"
   end
 
   def project_root
     @project_root ||= File.absolute_path("#{__dir__}/..")
+  end
+
+  def ensure_development_ports!
+    return if File.exist?(port_env_file_path) && (compose_project_running? || persisted_development_ports_available?)
+
+    servers = PORT_ENV_KEYS.map { TCPServer.new("127.0.0.1", 0) }
+    assignments = PORT_ENV_KEYS.zip(servers.map { |server| server.addr[1] })
+
+    File.write(
+      port_env_file_path,
+      assignments.map { |key, port| "#{key}=#{port}" }.join("\n") + "\n",
+    )
+    puts "Wrote random development ports to #{port_env_file_path}"
+  ensure
+    servers&.each(&:close)
+  end
+
+  def port_env_file_path
+    "#{project_root}/#{PORT_ENV_FILE}"
+  end
+
+  def compose_project_running?
+    command = "cd #{project_root} && docker compose --env-file #{port_env_file_path} -f docker-compose.development.yml ps -q --status=running"
+
+    !`#{command}`.strip.empty?
+  end
+
+  def persisted_development_ports_available?
+    ports = File.readlines(port_env_file_path).filter_map do |line|
+      key, value = line.strip.split("=", 2)
+      value.to_i if PORT_ENV_KEYS.include?(key)
+    end
+
+    ports.length == PORT_ENV_KEYS.length && ports.uniq.length == ports.length && ports.all? { |port| port_available?(port) }
+  end
+
+  def port_available?(port)
+    server = TCPServer.new("127.0.0.1", port)
+    true
+  rescue Errno::EADDRINUSE
+    false
+  ensure
+    server&.close
   end
 
   def take_over_needed?(file_or_directory)
