@@ -216,11 +216,12 @@ class DevHelper
     raise ScriptError, "Must provide a file path." if file_path.nil?
 
     png_path = file_path.gsub(/\.(wsd|pu|puml|plantuml|uml)$/, ".png")
+    plantuml_port = development_port("DIMENSION_PLANTUML_PORT", "59999")
 
     command = <<~BASH
       curl #{args.join(" ")} \
         --data-binary @'#{file_path}' \
-        http://localhost:9999/png > '#{png_path}'
+        http://localhost:#{plantuml_port}/png > '#{png_path}'
     BASH
 
     puts "Running: #{command}"
@@ -285,6 +286,19 @@ class DevHelper
 
   def port_env_file_path
     "#{project_root}/#{PORT_ENV_FILE}"
+  end
+
+  def development_port(key, fallback)
+    return ENV.fetch(key) if ENV.key?(key)
+
+    if File.exist?(port_env_file_path)
+      File.readlines(port_env_file_path).each do |line|
+        env_key, value = line.strip.split("=", 2)
+        return value if env_key == key && value && !value.empty?
+      end
+    end
+
+    fallback
   end
 
   def compose_project_running?
