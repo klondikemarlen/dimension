@@ -94,7 +94,7 @@ function siblingMethodIds(nodes: SourceNode[], links: SourceLink[], focusNode: S
   return links
     .filter((link) => parentIds.includes(link.source) && link.target !== focusNode.id)
     .map((link) => nodes.find((node) => node.id === link.target))
-    .filter((node): node is SourceNode => node?.type === "method")
+    .filter((node): node is SourceNode => Boolean(node && node.id.includes(":method:")))
     .map((node) => node.id)
 }
 

@@ -3,6 +3,7 @@ import { computed, nextTick, ref } from "vue"
 
 import SpellCanvas from "@/components/SpellCanvas.vue"
 import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
+import { publicProjectExamples, type PublicProjectExample } from "@/fixtures/publicProjectExamples"
 import { createGraphFromSourceFile } from "@/services/graph-import-service"
 import { createProjectGraphFromFiles } from "@/services/project-folder-service"
 import { createSpellDiagramFromSourceGraph } from "@/services/spell-diagram-adapter"
@@ -13,8 +14,10 @@ const builtInSourceName = "Built-in controller fixture"
 const defaultImportMessage = "Upload a source file for layered code review, or select a folder for a filename-only map."
 const builtInSubtitle = "Controller fixture for reviewing project organization across method, policy, query, and response layers."
 const workspaceStorageKey = "dimension:last-workspace"
-const persistedWorkspace = readPersistedWorkspace()
-
+const defaultPageTitle = "Dimension Project Intelligence"
+const urlExample = readExampleFromUrl()
+const storedWorkspace = readPersistedWorkspace()
+const persistedWorkspace = urlExample ? workspaceFromExample(urlExample, storedWorkspace) : storedWorkspace
 interface PersistedWorkspace {
   graph: SourceGraph
   title: string
@@ -22,12 +25,16 @@ interface PersistedWorkspace {
   sourceName: string
   selectedNodeId?: string
   message: string
+  exampleId?: string
+  sourceUrl?: string
 }
 
 const sourceGraph = ref<SourceGraph | undefined>(persistedWorkspace?.graph)
 const diagramTitle = ref(persistedWorkspace?.title ?? builtInSourceName)
 const diagramSubtitle = ref(persistedWorkspace?.subtitle ?? builtInSubtitle)
 const selectedSourceName = ref(persistedWorkspace?.sourceName ?? builtInSourceName)
+const selectedSourceUrl = ref<string | undefined>(persistedWorkspace?.sourceUrl)
+const selectedExampleId = ref<string | undefined>(persistedWorkspace?.exampleId)
 const selectedNodeId = ref<string | undefined>(persistedWorkspace?.selectedNodeId)
 const importStatus = ref<"idle" | "loading" | "success" | "error">(persistedWorkspace ? "success" : "idle")
 const importMessage = ref(persistedWorkspace?.message ?? defaultImportMessage)
@@ -44,16 +51,25 @@ const currentDiagram = computed<SpellDiagram>(() => {
 })
 const selectedNode = computed(() => currentDiagram.value.nodes.find((node) => node.id === selectedNodeId.value))
 const selectedConnections = computed(() => connectedNodes(currentDiagram.value, selectedNode.value))
+syncDocumentTitle(diagramTitle.value)
 
 function loadBuiltInSample(): void {
   sourceGraph.value = undefined
   diagramTitle.value = builtInSourceName
   diagramSubtitle.value = builtInSubtitle
   selectedSourceName.value = builtInSourceName
+  selectedSourceUrl.value = undefined
   selectedNodeId.value = undefined
   importStatus.value = "idle"
+  selectedExampleId.value = undefined
   importMessage.value = defaultImportMessage
   clearPersistedWorkspace()
+  replaceUrlState()
+  syncDocumentTitle(builtInSourceName)
+}
+
+function loadPublicProjectExample(example: PublicProjectExample): void {
+  setWorkspace(workspaceFromExample(example))
 }
 
 async function importSourceFile(event: Event): Promise<void> {
@@ -75,6 +91,7 @@ async function importSourceFile(event: Event): Promise<void> {
       title: sourceFile.name,
       subtitle: "High-level code map imported from the server parser.",
       sourceName: sourceFile.name,
+      sourceUrl: undefined,
       selectedNodeId: selectedId,
       message,
     })
@@ -107,6 +124,7 @@ async function importProjectFolder(event: Event): Promise<void> {
       title: folderName,
       subtitle: "Filename-only project map. This MVP shows the selected folder's direct children only.",
       sourceName: folderName,
+      sourceUrl: undefined,
       selectedNodeId: selectedId,
       message,
     })
@@ -128,10 +146,15 @@ function setWorkspace(workspace: PersistedWorkspace): void {
   diagramTitle.value = workspace.title
   diagramSubtitle.value = workspace.subtitle
   selectedSourceName.value = workspace.sourceName
+  selectedSourceUrl.value = workspace.sourceUrl
   selectedNodeId.value = workspace.selectedNodeId
   importStatus.value = "success"
-  importMessage.value = workspace.message
-  persistWorkspace(workspace)
+  selectedExampleId.value = workspace.exampleId
+  importMessage.value = persistWorkspace(workspace)
+    ? workspace.message
+    : `${workspace.message} This graph is loaded, but browser storage refused to save it for refresh.`
+  replaceUrlState(workspace)
+  syncDocumentTitle(workspace.title)
 }
 
 function persistCurrentWorkspace(): void {
@@ -142,8 +165,10 @@ function persistCurrentWorkspace(): void {
     title: diagramTitle.value,
     subtitle: diagramSubtitle.value,
     sourceName: selectedSourceName.value,
+    sourceUrl: selectedSourceUrl.value,
     selectedNodeId: selectedNodeId.value,
     message: importMessage.value,
+    exampleId: selectedExampleId.value,
   })
 }
 
@@ -185,11 +210,12 @@ function readPersistedWorkspace(): PersistedWorkspace | undefined {
   }
 }
 
-function persistWorkspace(workspace: PersistedWorkspace): void {
+function persistWorkspace(workspace: PersistedWorkspace): boolean {
   try {
     localStorage.setItem(workspaceStorageKey, JSON.stringify(workspace))
+    return true
   } catch {
-    // Best effort only. The in-memory workspace is still loaded.
+    return false
   }
 }
 
@@ -199,6 +225,39 @@ function clearPersistedWorkspace(): void {
   } catch {
     // Best effort only. The built-in sample is still loaded.
   }
+}
+
+function readExampleFromUrl(): PublicProjectExample | undefined {
+  const exampleId = new URLSearchParams(window.location.search).get("example")
+
+  return publicProjectExamples.find((example) => example.id === exampleId)
+}
+
+function workspaceFromExample(example: PublicProjectExample, storedWorkspace?: PersistedWorkspace): PersistedWorkspace {
+  const defaultSelectedId = firstLayerNodeId(example.graph) ?? example.graph.nodes[0]?.id
+  const selectedId = storedWorkspace?.exampleId === example.id ? storedWorkspace.selectedNodeId ?? defaultSelectedId : defaultSelectedId
+
+  return {
+    graph: example.graph,
+    title: example.title,
+    subtitle: example.subtitle,
+    sourceName: example.sourceName,
+    sourceUrl: example.sourceUrl,
+    selectedNodeId: selectedId,
+    message: `Loaded ${example.graph.nodes.length} code parts and ${example.graph.links.length} links from public ${example.label}.`,
+    exampleId: example.id,
+  }
+}
+
+function replaceUrlState(workspace?: PersistedWorkspace): void {
+  const url = new URL(window.location.href)
+
+  url.search = workspace?.exampleId ? `?example=${encodeURIComponent(workspace.exampleId)}` : ""
+  window.history.replaceState(null, "", url)
+}
+
+function syncDocumentTitle(workspaceTitle: string): void {
+  document.title = workspaceTitle === builtInSourceName ? defaultPageTitle : `${workspaceTitle} · Dimension`
 }
 </script>
 
@@ -226,6 +285,18 @@ function clearPersistedWorkspace(): void {
           <input type="file" webkitdirectory multiple :disabled="isImporting" @change="importProjectFolder" />
         </label>
         <button type="button" :disabled="isImporting" @click="loadBuiltInSample">Load built-in sample</button>
+        <div class="source-import__examples" aria-label="Public project examples">
+          <span>Public examples</span>
+          <button
+            v-for="example in publicProjectExamples"
+            :key="example.id"
+            type="button"
+            :disabled="isImporting"
+            @click="loadPublicProjectExample(example)"
+          >
+            {{ example.label }}
+          </button>
+        </div>
         <p class="source-import__status" :class="`source-import__status--${importStatus}`" aria-live="polite">
           {{ importMessage }}
         </p>
@@ -233,7 +304,12 @@ function clearPersistedWorkspace(): void {
       <dl class="framework-grid" aria-label="Current source graph">
         <div>
           <dt>Source</dt>
-          <dd>{{ selectedSourceName }}</dd>
+          <dd>
+            <a v-if="selectedSourceUrl" :href="selectedSourceUrl" target="_blank" rel="noreferrer">
+              {{ selectedSourceName }}
+            </a>
+            <template v-else>{{ selectedSourceName }}</template>
+          </dd>
         </div>
         <div>
           <dt>Visual shell</dt>

@@ -105,6 +105,19 @@ h1 {
   font-weight: 700;
 }
 
+.source-import__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.source-import__examples span {
+  width: 100%;
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
 .source-import__status {
   min-height: 3.2em;
   margin: 0;
@@ -163,6 +176,11 @@ h1 {
   margin: 0.25rem 0 0;
   color: var(--color-heading);
   font-weight: 700;
+}
+
+.framework-grid a {
+  color: inherit;
+  overflow-wrap: anywhere;
 }
 
 .graph-details {
