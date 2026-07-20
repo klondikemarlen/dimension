@@ -1,5 +1,11 @@
 # Dimension Framework Decisions
 
+## Product Principle
+
+Dimension is no longer centered on helping people hand-write code. It is a project intelligence workspace for humans and AI agents: a way to inspect what was built, understand whether the codebase is organized well, and request high-level structural changes.
+
+The product should favor layered project maps, semantic zoom, source-aware inspection, and organization signals over text-editing chrome. Code views are supporting evidence, not the primary surface.
+
 ## Current Decision
 
 Dimension should keep Vue as the browser application shell for now and build a small Dimension-specific workspace kernel instead of adopting a large editor framework or switching to React only for library availability.
@@ -18,9 +24,9 @@ The workspace kernel is not a general-purpose public library at first. It is pro
 
 ## Why This Stack
 
-Dimension needs a semantic graph workspace with a paint-program feel. Generic node editors are useful references, but Dimension's core interaction is not a stock flowchart. The product needs custom glyphs, rings, leylines, semantic zoom, quality markers, and source-aware inspection.
+Dimension needs a semantic project workspace with a paint-program feel. Generic node editors are useful references, but Dimension's core interaction is not a stock flowchart or a text editor. The product needs custom glyphs, rings, leylines, semantic zoom, quality markers, and source-aware inspection for both humans and AI agents.
 
-Building a small workspace kernel is the better slow solution because the current required primitives are limited: viewport transform, pointer capture, selection state, edge path geometry, node hit boxes, focus management, and inspector updates. Pulling in a full graph editor too early risks fighting its data model and visual defaults.
+Building a small workspace kernel is the better slow solution because the current required primitives are limited: viewport transform, pointer capture, selection state, layered graph layout, node hit boxes, focus management, and inspector updates. Pulling in a full graph editor too early risks fighting its data model and visual defaults.
 
 Vue remains a good fit because the application shell and existing component structure are already Vue, while the hard part is not React versus Vue; it is the graph contract and visual grammar. Vue's composition model is sufficient for the workspace kernel if the mutable interaction state is kept explicit and small.
 
