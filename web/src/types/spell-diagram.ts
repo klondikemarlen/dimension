@@ -1,6 +1,6 @@
-export type RuneKind = "method" | "local" | "policy" | "async" | "response" | "error"
+export type RuneKind = "method" | "local" | "policy" | "async" | "response" | "error" | "context"
 
-export type EdgeKind = "data" | "error" | "response"
+export type EdgeKind = "data" | "error" | "response" | "context"
 
 export interface RuneNode {
   id: string

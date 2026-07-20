@@ -265,6 +265,12 @@ h1 {
   stroke: rgba(60, 38, 22, 0.72);
 }
 
+
+.leyline--context {
+  stroke: rgba(85, 54, 30, 0.34);
+  stroke-dasharray: 8 14;
+  stroke-width: 2;
+}
 .leyline--response {
   stroke: var(--color-response);
   stroke-width: 5;
@@ -318,6 +324,21 @@ h1 {
   stroke-dasharray: 12 8;
 }
 
+
+.rune--context {
+  opacity: 0.58;
+}
+
+.rune--context circle:first-child {
+  fill: rgba(255, 250, 232, 0.58);
+  stroke: rgba(85, 54, 30, 0.5);
+  stroke-width: 2;
+}
+
+.rune--context text {
+  fill: var(--color-muted);
+  font-size: 0.66rem;
+}
 .rune--policy circle:first-child {
   fill: rgba(245, 225, 169, 0.88);
 }

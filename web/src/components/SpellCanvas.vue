@@ -101,8 +101,8 @@ function nodeLabelLines(label: string): string[] {
       </defs>
 
       <rect class="parchment" x="24" y="24" width="1032" height="672" rx="34" />
-      <circle class="scope-ring scope-ring--outer" cx="480" cy="330" r="300" />
-      <circle class="scope-ring scope-ring--inner" cx="480" cy="330" r="188" />
+      <circle class="scope-ring scope-ring--outer" cx="540" cy="360" r="300" />
+      <circle class="scope-ring scope-ring--inner" cx="540" cy="360" r="188" />
 
       <g class="leylines" filter="url(#ink-bleed)">
         <path

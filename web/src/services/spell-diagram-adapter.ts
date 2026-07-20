@@ -8,6 +8,10 @@ const CENTER_Y = CANVAS_HEIGHT / 2
 const LAYOUT_RADIUS_X = 300
 const LAYOUT_RADIUS_Y = 205
 const DENSE_GRAPH_LIMIT = 28
+const CONTEXT_X = 175
+const CONTEXT_START_Y = 150
+const CONTEXT_GAP_Y = 72
+const DETAIL_LIMIT = 14
 
 export interface SpellDiagramInput {
   graph: SourceGraph
@@ -31,16 +35,35 @@ export function createSpellDiagramFromSourceGraph(input: SpellDiagramInput): Spe
     title: input.title,
     subtitle,
     nodes: visibleNodes.map((node, index) =>
-      createRuneNode(node, index, visibleNodes.length, node.id === focusNode.id, node.id === input.selectedNodeId),
+      createRuneNode(
+        node,
+        index,
+        visibleNodes.length,
+        node.id === focusNode.id,
+        node.id === input.selectedNodeId,
+        contextIndex(visibleNodes, index),
+        contextCount(visibleNodes),
+        detailIndex(visibleNodes, index),
+        detailCount(visibleNodes),
+      ),
     ),
     edges: input.graph.links
       .filter((link) => visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target))
-      .map((link, index) => ({
-        id: `${link.source}-${link.target}-${index}`,
-        source: link.source,
-        target: link.target,
-        kind: edgeKindForTarget(visibleNodes.find((node) => node.id === link.target)),
-      })),
+      .flatMap((link, index) => {
+        const source = visibleNodes.find((node) => node.id === link.source)
+        const target = visibleNodes.find((node) => node.id === link.target)
+
+        if (source?.type === "context" && target?.type === "context") return []
+
+        return [
+          {
+            id: `${link.source}-${link.target}-${index}`,
+            source: link.source,
+            target: link.target,
+            kind: edgeKindFor(source, target),
+          },
+        ]
+      }),
   }
 }
 
@@ -51,18 +74,19 @@ function focusNodeFor(nodes: SourceNode[], selectedNodeId: string | undefined): 
 function visibleSourceNodes(nodes: SourceNode[], links: SourceLink[], focusNode: SourceNode): SourceNode[] {
   if (isLayerNode(focusNode)) return firstLayerNodes(nodes, links, focusNode)
 
-  if (nodes.length <= DENSE_GRAPH_LIMIT) return nodes
-
-  const visibleIds = new Set<string>([focusNode.id])
+  const parentNodes = parentContextNodes(nodes, links, focusNode)
   const directIds = linkedNodeIds(links, focusNode.id)
+  parentNodes.forEach((node) => directIds.delete(node.id))
 
-  directIds.forEach((id) => visibleIds.add(id))
-  siblingMethodIds(nodes, links, focusNode).forEach((id) => visibleIds.add(id))
+  const siblingNodes = siblingMethodIds(nodes, links, focusNode)
+    .map((id) => nodes.find((node) => node.id === id))
+    .filter((node): node is SourceNode => Boolean(node))
+    .slice(0, 6)
+    .map(asContextNode)
 
-  return [focusNode, ...nodes.filter((node) => node.id !== focusNode.id && visibleIds.has(node.id))].slice(
-    0,
-    DENSE_GRAPH_LIMIT,
-  )
+  const detailNodes = nodes.filter((node) => directIds.has(node.id)).slice(0, DETAIL_LIMIT)
+
+  return [focusNode, ...parentNodes.map(asContextNode), ...siblingNodes, ...detailNodes]
 }
 
 function firstLayerNodes(nodes: SourceNode[], links: SourceLink[], focusNode: SourceNode): SourceNode[] {
@@ -87,7 +111,7 @@ function linkedNodeIds(links: SourceLink[], nodeId: string): Set<string> {
 }
 
 function siblingMethodIds(nodes: SourceNode[], links: SourceLink[], focusNode: SourceNode): string[] {
-  if (focusNode.type !== "method") return []
+  if (!focusNode.id.includes(":method:")) return []
 
   const parentIds = links.filter((link) => link.target === focusNode.id).map((link) => link.source)
 
@@ -98,12 +122,47 @@ function siblingMethodIds(nodes: SourceNode[], links: SourceLink[], focusNode: S
     .map((node) => node.id)
 }
 
+function parentContextNodes(nodes: SourceNode[], links: SourceLink[], focusNode: SourceNode): SourceNode[] {
+  return links
+    .filter((link) => link.target === focusNode.id)
+    .map((link) => nodes.find((node) => node.id === link.source))
+    .filter((node): node is SourceNode => Boolean(node))
+    .slice(0, 1)
+}
+
+function asContextNode(node: SourceNode): SourceNode {
+  return {
+    ...node,
+    type: "context",
+  }
+}
+
+function contextCount(nodes: SourceNode[]): number {
+  return nodes.filter((node) => node.type === "context").length
+}
+
+function contextIndex(nodes: SourceNode[], index: number): number {
+  return nodes.slice(0, index).filter((node) => node.type === "context").length
+}
+
+function detailCount(nodes: SourceNode[]): number {
+  return nodes.filter((node) => node.type !== "context").length - 1
+}
+
+function detailIndex(nodes: SourceNode[], index: number): number {
+  return nodes.slice(0, index).filter((node) => node.type !== "context").length - 1
+}
+
 function createRuneNode(
   node: SourceNode,
   index: number,
   count: number,
   isFocus: boolean,
   isSelected: boolean,
+  nodeContextIndex: number,
+  nodeContextCount: number,
+  nodeDetailIndex: number,
+  nodeDetailCount: number,
 ): RuneNode {
   if (isFocus) {
     return {
@@ -118,8 +177,23 @@ function createRuneNode(
     }
   }
 
-  const angle = (Math.PI * 2 * index) / Math.max(count - 1, 1) - Math.PI / 2
+  if (node.type === "context") {
+    return {
+      id: node.id,
+      label: node.label,
+      kind: "context",
+      x: CONTEXT_X,
+      y: CONTEXT_START_Y + nodeContextIndex * Math.min(CONTEXT_GAP_Y, 500 / Math.max(nodeContextCount, 1)),
+      radius: radiusForSourceType(node.type, false),
+      ring: "dashed",
+      isSelected,
+    }
+  }
 
+  const detailAngle =
+    nodeDetailCount <= 1 ? 0 : (Math.PI * 1.45 * nodeDetailIndex) / Math.max(nodeDetailCount - 1, 1) - Math.PI * 0.72
+
+  const angle = nodeContextCount > 0 ? detailAngle : (Math.PI * 2 * index) / Math.max(count - 1, 1) - Math.PI / 2
   return {
     id: node.id,
     label: node.label,
@@ -136,6 +210,8 @@ function runeKindForSourceType(type: string): RuneKind {
   switch (type) {
     case "async":
       return "async"
+    case "context":
+      return "context"
     case "error":
       return "error"
     case "response":
@@ -151,7 +227,9 @@ function runeKindForSourceType(type: string): RuneKind {
   }
 }
 
-function edgeKindForTarget(target: SourceNode | undefined): EdgeKind {
+function edgeKindFor(source: SourceNode | undefined, target: SourceNode | undefined): EdgeKind {
+  if (source?.type === "context" || target?.type === "context") return "context"
+
   switch (target?.type) {
     case "error":
       return "error"
@@ -161,6 +239,7 @@ function edgeKindForTarget(target: SourceNode | undefined): EdgeKind {
       return "data"
   }
 }
+
 
 function ringForSourceType(type: string): RuneNode["ring"] {
   switch (type) {
@@ -176,6 +255,8 @@ function radiusForSourceType(type: string, isFocus: boolean): number {
   if (isFocus) return 84
 
   switch (type) {
+    case "context":
+      return 34
     case "class":
     case "folder":
       return 62
