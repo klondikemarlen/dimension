@@ -13,8 +13,8 @@ services:
     tty: true # allows attaching debugger, equivalent of docker exec -t
     # stdin_open: true # equivalent of docker exec -i
     ports:
-      - "3000:3000"
-      - "9229:9229"
+      - "${DIMENSION_API_PORT:-57519}:3000"
+      - "${DIMENSION_API_DEBUG_PORT:-59229}:9229"
     volumes:
       - ./api:/usr/src/api
       - ./.gitignore:/usr/src/.gitignore
@@ -26,8 +26,9 @@ services:
       dockerfile: development.Dockerfile
     environment:
       <<: *default-environment
+      DIMENSION_API_INTERNAL_ORIGIN: http://api:3000
     ports:
-      - "8080:8080"
+      - "${DIMENSION_WEB_PORT:-58501}:5173"
     volumes:
       - ./web:/usr/src/web
       - ./.gitignore:/usr/src/.gitignore
@@ -41,7 +42,7 @@ services:
   plantuml:
     image: plantuml/plantuml-server:jetty
     ports:
-      - 9999:8080
+      - "${DIMENSION_PLANTUML_PORT:-59999}:8080"
     environment:
       PLANTUML_LIMIT_SIZE: 8192
     profiles:
