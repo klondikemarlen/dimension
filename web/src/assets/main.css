@@ -9,7 +9,7 @@
   padding: clamp(1rem, 2vw, 2rem);
   display: grid;
   gap: clamp(1.25rem, 3vw, 3rem);
-  grid-template-columns: minmax(18rem, 0.38fr) minmax(0, 1fr);
+  grid-template-columns: minmax(17rem, 0.3fr) minmax(0, 1fr);
   align-items: stretch;
 }
 
@@ -53,6 +53,105 @@ h1 {
   font-size: clamp(1rem, 1.4vw, 1.25rem);
 }
 
+.source-import {
+  margin: 1.5rem 0 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.source-import label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.source-import input {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: rgba(255, 248, 225, 0.68);
+  color: var(--color-text);
+  padding: 0.75rem;
+}
+
+.source-import input:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.source-import button {
+  justify-self: start;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-parchment);
+  color: var(--color-heading);
+  cursor: pointer;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+}
+
+.source-import button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.source-import input::file-selector-button {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-parchment);
+  color: var(--color-heading);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.source-import__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.source-import__examples span {
+  width: 100%;
+  color: var(--color-heading);
+  font-weight: 700;
+}
+
+.source-import__status {
+  min-height: 3.2em;
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.source-import__status--loading {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.source-import__status--loading::after {
+  content: "…";
+  animation: loading-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes loading-pulse {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.source-import__status--success {
+  color: var(--color-response);
+}
+
+.source-import__status--error {
+  color: var(--color-error);
+}
+
 .framework-grid {
   margin: 2rem 0 0;
   display: grid;
@@ -76,6 +175,48 @@ h1 {
 .framework-grid dd {
   margin: 0.25rem 0 0;
   color: var(--color-heading);
+  font-weight: 700;
+}
+
+.framework-grid a {
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.graph-details {
+  margin: 1.25rem 0 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: rgba(255, 248, 225, 0.54);
+}
+
+.graph-details h2 {
+  margin: 0;
+  color: var(--color-heading);
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+
+.graph-details p {
+  margin: 0.35rem 0 0;
+  color: var(--color-muted);
+}
+
+.graph-details__links {
+  margin: 0.85rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.graph-details__links button {
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-parchment);
+  color: var(--color-heading);
+  cursor: pointer;
+  padding: 0.45rem 0.7rem;
   font-weight: 700;
 }
 
@@ -124,6 +265,12 @@ h1 {
   stroke: rgba(60, 38, 22, 0.72);
 }
 
+
+.leyline--context {
+  stroke: rgba(85, 54, 30, 0.34);
+  stroke-dasharray: 8 14;
+  stroke-width: 2;
+}
 .leyline--response {
   stroke: var(--color-response);
   stroke-width: 5;
@@ -141,6 +288,11 @@ h1 {
 
 .rune {
   outline: none;
+}
+
+.rune:hover,
+.rune:focus-visible {
+  cursor: pointer;
 }
 
 .rune circle {
@@ -161,10 +313,32 @@ h1 {
   stroke-width: 8;
 }
 
+.rune--selected circle:first-child,
+.rune:hover circle:first-child,
+.rune:focus-visible circle:first-child {
+  stroke: var(--color-accent);
+  stroke-width: 7;
+}
+
 .rune--dashed circle:first-child {
   stroke-dasharray: 12 8;
 }
 
+
+.rune--context {
+  opacity: 0.58;
+}
+
+.rune--context circle:first-child {
+  fill: rgba(255, 250, 232, 0.58);
+  stroke: rgba(85, 54, 30, 0.5);
+  stroke-width: 2;
+}
+
+.rune--context text {
+  fill: var(--color-muted);
+  font-size: 0.66rem;
+}
 .rune--policy circle:first-child {
   fill: rgba(245, 225, 169, 0.88);
 }

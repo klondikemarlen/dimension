@@ -14,6 +14,7 @@ dist-ssr
 coverage
 *.local
 .envrc
+.dev-ports.env
 
 /cypress/videos/
 /cypress/screenshots/

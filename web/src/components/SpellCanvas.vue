@@ -2,17 +2,21 @@
 import { computed } from "vue"
 import { curveCatmullRom, line } from "d3"
 
-import type { EdgeKind, RuneNode, SpellDiagram } from "@/fixtures/usersControllerIndex"
+import type { EdgeKind, RuneNode, SpellDiagram } from "@/types/spell-diagram"
 
 const props = defineProps<{
   diagram: SpellDiagram
 }>()
 
+const emit = defineEmits<{
+  selectNode: [id: string]
+}>()
+
 const nodeById = computed(() => new Map(props.diagram.nodes.map((node) => [node.id, node])))
 
 const pathBuilder = line<[number, number]>()
-  .x(([x]) => x)
-  .y(([, y]) => y)
+  .x((point: [number, number]) => point[0])
+  .y((point: [number, number]) => point[1])
   .curve(curveCatmullRom.alpha(0.5))
 
 const edges = computed(() =>
@@ -39,11 +43,13 @@ function buildEdgePath(source: RuneNode, target: RuneNode): string {
     (source.y + target.y) / 2 - Math.abs(source.x - target.x) * 0.08,
   ]
 
-  return pathBuilder([
-    [source.x, source.y],
-    midpoint,
-    [target.x, target.y],
-  ]) ?? ""
+  return (
+    pathBuilder([
+      [source.x, source.y],
+      midpoint,
+      [target.x, target.y],
+    ]) ?? ""
+  )
 }
 
 function edgeClass(kind: EdgeKind): string {
@@ -51,7 +57,22 @@ function edgeClass(kind: EdgeKind): string {
 }
 
 function nodeClass(node: RuneNode): string {
-  return ["rune", `rune--${node.kind}`, node.ring ? `rune--${node.ring}` : ""].filter(Boolean).join(" ")
+  return [
+    "rune",
+    `rune--${node.kind}`,
+    node.ring ? `rune--${node.ring}` : "",
+    node.isSelected ? "rune--selected" : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+}
+
+function nodeLabelLines(label: string): string[] {
+  return label
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .split(/[\s_.:/-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
 }
 </script>
 
@@ -80,8 +101,8 @@ function nodeClass(node: RuneNode): string {
       </defs>
 
       <rect class="parchment" x="24" y="24" width="1032" height="672" rx="34" />
-      <circle class="scope-ring scope-ring--outer" cx="480" cy="330" r="300" />
-      <circle class="scope-ring scope-ring--inner" cx="480" cy="330" r="188" />
+      <circle class="scope-ring scope-ring--outer" cx="540" cy="360" r="300" />
+      <circle class="scope-ring scope-ring--inner" cx="540" cy="360" r="188" />
 
       <g class="leylines" filter="url(#ink-bleed)">
         <path
@@ -99,13 +120,19 @@ function nodeClass(node: RuneNode): string {
           :key="node.id"
           :class="nodeClass(node)"
           :transform="`translate(${node.x} ${node.y})`"
+          role="button"
           tabindex="0"
+          :aria-label="`Select ${node.label}`"
+          :aria-pressed="node.isSelected"
+          @click="emit('selectNode', node.id)"
+          @keydown.enter="emit('selectNode', node.id)"
+          @keydown.space.prevent="emit('selectNode', node.id)"
         >
           <circle :r="node.radius" />
           <circle v-if="node.kind === 'async'" class="async-halo" :r="node.radius + 11" />
           <text text-anchor="middle" dominant-baseline="middle">
             <tspan
-              v-for="(line, index) in node.label.split(' ')"
+              v-for="(line, index) in nodeLabelLines(node.label)"
               :key="`${node.id}-${line}-${index}`"
               x="0"
               :dy="index === 0 ? -7 : 16"

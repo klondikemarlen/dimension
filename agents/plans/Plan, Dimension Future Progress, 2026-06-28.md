@@ -12,12 +12,12 @@ Investigate the Dimension project, produce a concrete plan in the project agent-
 - The future-progress plan is a spec-first plan artifact under `agents/plans/`.
 - The plan names the current project state, chosen direction, risks, verification, and execution slices.
 - The first implementation slices are small enough to commit independently.
-- The roadmap moves Dimension from static fixture canvas to source-backed visual code workspace.
+- The roadmap moves Dimension from static fixture canvas to source-backed visual code workspace, and no current framework choice is sacred if a better tool serves that goal.
 
 ### Non-Goals
 
 - Do not build the full editor in this first slice.
-- Do not introduce Canvas or WebGL before SVG rendering has measured pressure.
+- Do not introduce Canvas or WebGL rendering before Scalable Vector Graphics rendering has measured pressure.
 - Do not implement source-code mutation, drag/drop editing, or runtime execution controls yet.
 - Do not preserve the confusing `agents/global-rules/agents/` path as a second source of truth.
 - Do not copy or document committed credential values.
@@ -26,7 +26,7 @@ Investigate the Dimension project, produce a concrete plan in the project agent-
 
 - Keep imported global-rule documents under `agents/global-rules/` unless a later cleanup intentionally removes that snapshot.
 - Keep reusable agent material under `agents/` following the WRAP layout.
-- Use existing stack decisions from `docs/framework-decisions.md`: Vue 3, Vite, TypeScript, D3, SVG-first rendering, Express 5, multer, and `ts-morph`.
+- Use `docs/framework-decisions.md` as the current tool decision record: TypeScript stays central, Vue remains the browser shell, a custom Dimension workspace kernel is the first interaction approach, D3 supports geometry, Scalable Vector Graphics remains the first renderer, and Express with `ts-morph` remains acceptable for source import.
 - Treat package-local build failures as current-state signal until dependency ownership and installation are fixed.
 - Use atomic commits: one logical change per commit.
 
@@ -61,7 +61,7 @@ Investigate the Dimension project, produce a concrete plan in the project agent-
   - `POST /graphs` accepts one uploaded `file` field.
   - `api/src/services/graphs/create-service.ts` parses classes, methods, variable statements, returns, and catch clauses.
 - Current graph models do not line up:
-  - API emits `DimGraph` with `nodes` and `links`.
+  - The API emits `DimGraph` with `nodes` and `links`.
   - Web fixture renders `SpellDiagram` with positioned runes, edge kinds, rings, radii, title, and subtitle.
 - Current tooling is uneven:
   - `web/package.json` has build, type-check, lint, and format scripts.
@@ -79,14 +79,14 @@ Investigate the Dimension project, produce a concrete plan in the project agent-
 
 ### Design Summary
 
-Dimension should use WRAP's agent-data layout and plan shape as the project convention. Agent-facing project material belongs directly under `agents/`, while imported global-rule snapshots may remain under `agents/global-rules/` only as source material. Future progress should then move through a source-backed read-only graph milestone before attempting full editor behavior.
+Dimension should use WRAP's agent-data layout and plan shape as the project convention. Agent-facing project material belongs directly under `agents/`, while imported global-rule snapshots may remain under `agents/global-rules/` only as source material. Future product progress should move through a source-backed read-only graph milestone, but the browser framework and interaction shell should be chosen by fit rather than by the current starter application.
 
 ### Behavior
 
 - Agents looking for project plans read `agents/plans/README.md`, then specific plan files under `agents/plans/`.
 - Agents looking for reusable procedures read `agents/workflows/README.md`, then specific workflow files under `agents/workflows/`.
 - Agents looking for templates or references use `agents/templates/` and `agents/references/`.
-- The Dimension product path moves from fixture-only SVG to imported TypeScript source rendered through a shared graph contract.
+- The Dimension product path moves from fixture-only Scalable Vector Graphics to imported TypeScript source rendered through a shared graph contract.
 - The first UI milestone remains read-only: upload or sample source in, spell diagram out.
 
 ### Interfaces and Data
@@ -99,7 +99,7 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 - Product graph stages:
   - `TypeScript source -> SourceGraph`
   - `SourceGraph -> SpellDiagram`
-  - `SpellDiagram -> SVG`
+  - `SpellDiagram -> Scalable Vector Graphics`
 - Current API route to evolve:
   - `POST /graphs`
 - Current frontend renderer to evolve:
@@ -110,7 +110,7 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 - Moving agent files can break relative links if any documents still point through `agents/global-rules/agents/`.
 - Keeping `agents/global-rules/` as an imported snapshot avoids deleting useful source material but can still confuse readers if docs do not distinguish imported rules from project-local agent data.
 - Fixing local `node_modules` ownership is necessary for builds, but that state should not be committed.
-- The API and web graph contracts are currently divergent; adding UI on top of the mismatch would create adapter churn.
+- The API and browser graph contracts are currently divergent; adding UI on top of the mismatch would create adapter churn.
 
 ## Open Questions
 
@@ -123,7 +123,8 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 - Use WRAP's flat `agents/` structure for project-local agent data.
 - Use WRAP's spec-first plan shape for new Dimension plans.
 - Keep the first product milestone read-only and source-backed.
-- Keep SVG + D3 as the renderer path per `docs/framework-decisions.md`.
+- Treat the browser framework as changeable, but keep Vue for now because the user prefers it and the better first bet is a small custom workspace kernel rather than a React migration.
+- Keep Scalable Vector Graphics and D3 as the renderer path per `docs/framework-decisions.md`.
 - Treat local token exposure as a security cleanup item; never reproduce its value in docs, commits, or plan text.
 
 ## Verification
@@ -140,26 +141,26 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 
 ### Current Branch State
 
-- **Committed:** `224875e` flattens project-local agent material into `agents/`; `f178152` documents spec-first agent plans and WRAP-style discovery READMEs.
+- **Committed:** `224875e` flattens project-local agent material into `agents/`; `f178152` documents spec-first agent plans and WRAP-style discovery READMEs; `123a0e0` keeps local direnv secrets out of versioned setup.
 - **Staged:** Nothing should be staged before each atomic commit is prepared.
-- **Unstaged / Untracked:** The current intended slice removes the committed `.envrc.example`, keeps the project `.envrc` ignore rule, and updates plan wording so no env example or credential placeholder is exposed.
+- **Unstaged / Untracked:** The current intended slice adds a durable Dimension feature list and records a tool-selection direction that keeps Vue while building a custom Dimension workspace kernel first.
 
 ### Remaining Slices
 
-1. Clean secret-bearing environment docs.
-   - Keep `.envrc` ignored for local secrets.
-   - Do not commit `.envrc` examples or credential placeholders.
-2. Stabilize package-local checks.
+1. Stabilize package-local checks.
    - Fix frontend type-check errors.
    - Repair local dependency ownership outside versioned files.
-   - Add missing API check scripts if needed.
+2. Build the custom Vue workspace kernel.
+   - Split the current `SpellCanvas` into graph data, layout helpers, viewport state, glyph rendering, edge rendering, and inspector state.
+   - Add pan, zoom, selection, and keyboard-focusable Scalable Vector Graphics elements.
+   - Compare against Vue Flow only if custom interaction work starts dominating the source-backed editor milestone.
 3. Define the shared graph contract.
    - Add source graph and visual graph types.
    - Add a named layout/transform step between parser and renderer.
-4. Connect import to read-only rendering.
-   - Call `POST /graphs` from the web app.
+4. Connect source import to read-only rendering.
+   - Call `POST /graphs` from the browser application.
    - Render returned visual graph.
-   - Keep sample fixture as a demo path.
+   - Keep sample fixture as a demonstration path.
 
 ## Files to Review
 
@@ -168,10 +169,11 @@ Dimension should use WRAP's agent-data layout and plan shape as the project conv
 3. `agents/plans/Plan, Dimension Future Progress, 2026-06-28.md` - This plan.
 4. `agents/global-rules/` - Imported source snapshot that should not contain another `agents/` directory after flattening.
 5. `.gitignore` - Ensures `.envrc` stays local and unversioned.
-6. `docs/framework-decisions.md` - Existing stack and rendering decisions.
-7. `web/src/components/SpellCanvas.vue` - Current SVG renderer.
-8. `web/src/fixtures/usersControllerIndex.ts` - Current visual graph fixture.
-9. `api/src/services/graphs/create-service.ts` - Current TypeScript source parser seed.
+6. `docs/framework-decisions.md` - Existing and proposed stack decisions.
+7. `docs/dimension-feature-list.md` - Product feature list, including visual code quality signals.
+8. `web/src/components/SpellCanvas.vue` - Current Scalable Vector Graphics renderer.
+9. `web/src/fixtures/usersControllerIndex.ts` - Current visual graph fixture.
+10. `api/src/services/graphs/create-service.ts` - Current TypeScript source parser seed.
 
 ## Related Issues
 

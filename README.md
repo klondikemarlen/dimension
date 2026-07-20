@@ -1,8 +1,8 @@
 # Dimension
 
-A dream of a visual code editor.
+A project intelligence workspace for humans and AI agents.
 
-This template should help get you started developing with Vue 3 in Vite.
+Dimension maps source files and project folders into browsable structural layers so you can see what an AI built, judge whether the project is well organized, and ask for focused changes without reading every file by hand.
 
 ## Recommended IDE Setup
 
@@ -11,6 +11,21 @@ This template should help get you started developing with Vue 3 in Vite.
 ## Customize configuration
 
 See [Vite Configuration Reference](https://vitejs.dev/config/).
+
+## Development
+
+The project uses the checked-in Docker Compose wrapper. `bin/dev up` writes random free host ports to `.dev-ports.env` and reuses them until the file is removed.
+
+```sh
+./bin/dev up
+./bin/dev down
+```
+
+PlantUML is behind the `design` Compose profile:
+
+```sh
+COMPOSE_PROFILES=design ./bin/dev up
+```
 
 ## Project Setup
 
