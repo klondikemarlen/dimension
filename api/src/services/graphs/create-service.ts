@@ -3,6 +3,7 @@ import { extname } from "node:path"
 import {
   Node,
   Project,
+  ScriptKind,
   SyntaxKind,
   type ArrowFunction,
   type FunctionDeclaration,
@@ -31,10 +32,10 @@ type CallableDeclaration = FunctionDeclaration | MethodDeclaration | ArrowFuncti
 type RubyStackFrame = { kind: "class" | "method"; node: SourceNode } | { kind: "block" }
 
 export function createService(path: string, sourceName = path): SourceGraph {
-  return extname(sourceName) === ".rb" ? createRubyGraph(path) : createTypeScriptGraph(path)
+  return extname(sourceName) === ".rb" ? createRubyGraph(path) : createTypeScriptGraph(path, sourceName)
 }
 
-function createTypeScriptGraph(path: string): SourceGraph {
+function createTypeScriptGraph(path: string, sourceName: string): SourceGraph {
   const graph: SourceGraph = { nodes: [], links: [] }
 
   const pushNode = (id: string, label: string, type: string) => {
@@ -48,7 +49,10 @@ function createTypeScriptGraph(path: string): SourceGraph {
       allowJs: true,
     },
   })
-  const sourceFile = project.addSourceFileAtPath(path)
+  const sourceFile =
+    extname(path) === extname(sourceName)
+      ? project.addSourceFileAtPath(path)
+      : project.createSourceFile(sourceName, readFileSync(path, "utf8"), { scriptKind: scriptKindFor(sourceName) })
 
   const inspectCallable = (
     callable: CallableDeclaration,
@@ -262,6 +266,19 @@ function currentRubyMethodNode(stack: RubyStackFrame[]): SourceNode | undefined 
 
 function opensRubyBlock(line: string): boolean {
   return /^(?:if|unless|case|begin|for|while|until)\b/.test(line) || /\bdo(?:\s*\|[^|]*\|)?$/.test(line)
+}
+
+function scriptKindFor(sourceName: string): ScriptKind {
+  switch (extname(sourceName)) {
+    case ".js":
+      return ScriptKind.JS
+    case ".jsx":
+      return ScriptKind.JSX
+    case ".tsx":
+      return ScriptKind.TSX
+    default:
+      return ScriptKind.TS
+  }
 }
 
 function containsAwait(node: TypeScriptNode | undefined): boolean {

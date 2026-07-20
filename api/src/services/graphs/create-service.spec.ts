@@ -8,6 +8,7 @@ import { createService } from "./create-service.ts"
 const directory = await mkdtemp(join(tmpdir(), "dimension-parser-"))
 const typeScriptSourcePath = join(directory, "sample.ts")
 const rubySourcePath = join(directory, "sample.rb")
+const uploadedTypeScriptReactPath = join(directory, "uploaded-typescript-react")
 const uploadedRubyPath = join(directory, "uploaded-ruby")
 
 await writeFile(
@@ -31,6 +32,16 @@ await writeFile(
   const buildWhere = () => {
     const filter = true
     return filter
+  }
+  `,
+)
+
+await writeFile(
+  uploadedTypeScriptReactPath,
+  `function UserBadge() {
+    const label = "ready"
+
+    return <span>{label}</span>
   }
   `,
 )
@@ -67,6 +78,12 @@ try {
       (link) => typeScriptNodeIdentifiers.includes(link.source) && typeScriptNodeIdentifiers.includes(link.target),
     ),
   )
+
+  const typeScriptReactGraph = createService(uploadedTypeScriptReactPath, "sample.tsx")
+  const typeScriptReactNodeIdentifiers = typeScriptReactGraph.nodes.map((node) => node.id)
+
+  assert(typeScriptReactNodeIdentifiers.includes("function:UserBadge"))
+  assert(typeScriptReactNodeIdentifiers.includes("function:UserBadge:local:label"))
 
   const rubyGraph = createService(uploadedRubyPath, "sample.rb")
   const rubyNodeIdentifiers = rubyGraph.nodes.map((node) => node.id)
