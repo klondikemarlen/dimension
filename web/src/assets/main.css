@@ -111,6 +111,26 @@ h1 {
   color: var(--color-muted);
 }
 
+.source-import__status--loading {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.source-import__status--loading::after {
+  content: "…";
+  animation: loading-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes loading-pulse {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .source-import__status--success {
   color: var(--color-response);
 }

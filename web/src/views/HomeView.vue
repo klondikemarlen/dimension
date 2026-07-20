@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed, nextTick, ref } from "vue"
 
 import SpellCanvas from "@/components/SpellCanvas.vue"
 import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
@@ -86,26 +86,36 @@ async function importSourceFile(event: Event): Promise<void> {
   }
 }
 
-function importProjectFolder(event: Event): void {
+async function importProjectFolder(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const files = input.files
 
   if (!files?.length) return
 
-  const graph = createProjectGraphFromFiles(files)
-  const folderName = graph.nodes[0]?.label ?? "Selected project"
-  const selectedId = graph.nodes[0]?.id
-  const message = `Mapped ${directChildCount(graph, selectedId)} first-layer items from ${folderName}; file contents stayed local.`
+  importStatus.value = "loading"
+  importMessage.value = `Reading ${files.length} selected path${files.length === 1 ? "" : "s"} locally…`
+  await nextFrame()
 
-  setWorkspace({
-    graph,
-    title: folderName,
-    subtitle: "Filename-only project map. This MVP shows the selected folder's direct children only.",
-    sourceName: folderName,
-    selectedNodeId: selectedId,
-    message,
-  })
-  input.value = ""
+  try {
+    const graph = createProjectGraphFromFiles(files)
+    const folderName = graph.nodes[0]?.label ?? "Selected project"
+    const selectedId = graph.nodes[0]?.id
+    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer items from ${folderName}; file contents stayed local.`
+
+    setWorkspace({
+      graph,
+      title: folderName,
+      subtitle: "Filename-only project map. This MVP shows the selected folder's direct children only.",
+      sourceName: folderName,
+      selectedNodeId: selectedId,
+      message,
+    })
+  } catch {
+    importStatus.value = "error"
+    importMessage.value = "Dimension could not map that folder."
+  } finally {
+    input.value = ""
+  }
 }
 
 function selectNode(id: string): void {
@@ -158,6 +168,11 @@ function connectedNodes(diagram: SpellDiagram, node: RuneNode | undefined): Rune
   })
 
   return diagram.nodes.filter((candidate) => connectionIds.has(candidate.id))
+}
+
+async function nextFrame(): Promise<void> {
+  await nextTick()
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 }
 
 function readPersistedWorkspace(): PersistedWorkspace | undefined {
