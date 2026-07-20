@@ -52,7 +52,9 @@ function createTypeScriptGraph(path: string, sourceName: string): SourceGraph {
   const sourceFile =
     extname(path) === extname(sourceName)
       ? project.addSourceFileAtPath(path)
-      : project.createSourceFile(sourceName, readFileSync(path, "utf8"), { scriptKind: scriptKindFor(sourceName) })
+      : project.createSourceFile(`${path}${extname(sourceName)}`, readFileSync(path, "utf8"), {
+          scriptKind: scriptKindFor(sourceName),
+        })
 
   const inspectCallable = (
     callable: CallableDeclaration,

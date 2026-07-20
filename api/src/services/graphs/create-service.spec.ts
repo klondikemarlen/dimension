@@ -9,6 +9,7 @@ const directory = await mkdtemp(join(tmpdir(), "dimension-parser-"))
 const typeScriptSourcePath = join(directory, "sample.ts")
 const rubySourcePath = join(directory, "sample.rb")
 const uploadedTypeScriptReactPath = join(directory, "uploaded-typescript-react")
+const uploadedCollidingTypeScriptPath = join(directory, "uploaded-colliding-typescript")
 const uploadedRubyPath = join(directory, "uploaded-ruby")
 
 await writeFile(
@@ -42,6 +43,14 @@ await writeFile(
     const label = "ready"
 
     return <span>{label}</span>
+  }
+  `,
+)
+
+await writeFile(
+  uploadedCollidingTypeScriptPath,
+  `function ApiConfig() {
+    return true
   }
   `,
 )
@@ -84,6 +93,11 @@ try {
 
   assert(typeScriptReactNodeIdentifiers.includes("function:UserBadge"))
   assert(typeScriptReactNodeIdentifiers.includes("function:UserBadge:local:label"))
+
+  const collidingTypeScriptGraph = createService(uploadedCollidingTypeScriptPath, "vite.config.ts")
+  const collidingTypeScriptNodeIdentifiers = collidingTypeScriptGraph.nodes.map((node) => node.id)
+
+  assert(collidingTypeScriptNodeIdentifiers.includes("function:ApiConfig"))
 
   const rubyGraph = createService(uploadedRubyPath, "sample.rb")
   const rubyNodeIdentifiers = rubyGraph.nodes.map((node) => node.id)
