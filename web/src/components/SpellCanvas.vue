@@ -78,7 +78,7 @@ function nodeLabelLines(label: string): string[] {
 
 <template>
   <figure class="spell-canvas" :aria-label="diagram.title">
-    <svg viewBox="0 0 1080 720" role="img">
+    <svg viewBox="0 0 1080 720" preserveAspectRatio="xMidYMin meet" role="img">
       <title>{{ diagram.title }}</title>
       <desc>{{ diagram.subtitle }}</desc>
 
