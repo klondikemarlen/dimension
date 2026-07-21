@@ -4,6 +4,7 @@ import {
   createProjectPreviewGraphFromFiles,
   planProjectImport,
   projectFilesFromInput,
+  projectFilesFromDirectory,
   projectNameForFiles,
   type LocalProjectFile,
 } from "../project-folder-service.ts"
@@ -61,6 +62,36 @@ assert.deepEqual(
 )
 assert.equal(importPlan.skippedCount, 1)
 assert.equal(importPlan.parseableCount, 1)
+
+const selectedDirectory = {
+  name: "dimension-directory-picker-qa",
+  kind: "directory" as const,
+  async *entries() {
+    yield [
+      "src",
+      {
+        name: "src",
+        kind: "directory" as const,
+        async *entries() {
+          yield ["app.ts", { kind: "file" as const, getFile: async () => projectFile("app.ts") }]
+        },
+      },
+    ] as const
+    yield [
+      "node_modules",
+      {
+        name: "node_modules",
+        kind: "directory" as const,
+        async *entries() {
+          throw new Error("Generated directories must not be traversed.")
+        },
+      },
+    ] as const
+  },
+}
+
+const directoryFiles = await projectFilesFromDirectory(selectedDirectory)
+assert.deepEqual(directoryFiles.map((file) => file.path), ["src/app.ts"])
 
 const singleSourceGraph = createProjectPreviewGraphFromFiles("Selected source", [
   { file: projectFile("app.ts"), path: "app.ts" },

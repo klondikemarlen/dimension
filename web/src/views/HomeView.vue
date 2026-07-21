@@ -8,8 +8,10 @@ import { createGraphFromProjectFiles } from "@/services/graph-import-service"
 import {
   createProjectPreviewGraphFromFiles,
   planProjectImport,
+  projectFilesFromDirectory,
   projectFilesFromInput,
   projectNameForFiles,
+  type ProjectDirectoryHandle,
   type LocalProjectFile,
 } from "@/services/project-folder-service"
 import { createSpellDiagramFromSourceGraph } from "@/services/spell-diagram-adapter"
@@ -105,10 +107,34 @@ async function importSourceFile(event: Event): Promise<void> {
   }
 }
 
-function openProjectFolderPicker(): void {
+async function openProjectFolderPicker(): Promise<void> {
+  if (isImporting.value) return
+
+  const directoryPicker = (window as Window & { showDirectoryPicker?: () => Promise<ProjectDirectoryHandle> }).showDirectoryPicker
+
+  if (directoryPicker) {
+    importStatus.value = "loading"
+    importMessage.value = "Choose a local folder in your browser dialog to map the project."
+
+    try {
+      const directory = await directoryPicker.call(window)
+      await importLocalProject(directory.name, await projectFilesFromDirectory(directory))
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        resetLocalProjectSelection()
+        return
+      }
+
+      importStatus.value = "error"
+      importMessage.value = error instanceof Error ? error.message : "Dimension could not open that local folder."
+    }
+
+    return
+  }
+
   const input = projectFolderInput.value
 
-  if (!input || isImporting.value) return
+  if (!input) return
 
   input.value = ""
   importStatus.value = "loading"
@@ -126,18 +152,20 @@ async function importProjectFolder(event: Event): Promise<void> {
   }
 
   try {
-    const rootName = projectNameForFiles(files)
-    const projectFiles = projectFilesFromInput(files)
-
-    showLocalProjectPreview(rootName, createProjectPreviewGraphFromFiles(rootName, projectFiles))
-    importMessage.value = `Data-mining ${rootName}; generated folders are skipped before supported code files are parsed…`
-    await nextFrame()
-
-    await importProjectFiles(rootName, projectFiles)
+    await importLocalProject(projectNameForFiles(files), projectFilesFromInput(files))
   } finally {
     input.value = ""
   }
 }
+
+async function importLocalProject(rootName: string, projectFiles: LocalProjectFile[]): Promise<void> {
+  showLocalProjectPreview(rootName, createProjectPreviewGraphFromFiles(rootName, projectFiles))
+  importMessage.value = `Data-mining ${rootName}; generated folders are skipped before supported code files are parsed…`
+  await nextFrame()
+
+  await importProjectFiles(rootName, projectFiles)
+}
+
 
 function resetLocalProjectSelection(): void {
   importStatus.value = "idle"
