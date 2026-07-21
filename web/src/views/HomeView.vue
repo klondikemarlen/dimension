@@ -4,19 +4,17 @@ import { computed, nextTick, ref } from "vue"
 import SpellCanvas from "@/components/SpellCanvas.vue"
 import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
 import { publicProjectExamples, type PublicProjectExample } from "@/fixtures/publicProjectExamples"
-import { createGraphFromProjectFiles } from "@/services/graph-import-service"
 import {
   nativeDirectoryPicker,
-  openFolderInput,
+  selectFolderInput,
   selectNativeDirectory,
-  selectionFromFolderInput,
   type FolderSelection,
+  type FolderSelectionProgress,
 } from "@/services/project-folder-selection-service"
 import {
-  createProjectPreviewGraphFromFiles,
-  planProjectImport,
-  type LocalProjectFile,
-} from "@/services/project-folder-service"
+  runProjectImport,
+  type ProjectImportPhase,
+} from "@/services/project-import-workflow-service"
 import { createSpellDiagramFromSourceGraph } from "@/services/spell-diagram-adapter"
 import type { SourceGraph } from "@/types/source-graph"
 import type { RuneNode, SpellDiagram } from "@/types/spell-diagram"
@@ -92,19 +90,16 @@ async function importSourceFile(event: Event): Promise<void> {
 
   if (!sourceFile) return
 
-  const rootName = "Selected source"
-  const sourceName = sourceFile.name
-  const projectFiles: LocalProjectFile[] = [{ file: sourceFile, path: sourceFile.name }]
-
   try {
-    showLocalProjectPreview(rootName, createProjectPreviewGraphFromFiles(rootName, projectFiles), sourceName)
-    importMessage.value = `Data-mining ${sourceName}; parsing 1 supported code file…`
-    await nextFrame()
-
-    await importProjectFiles(rootName, projectFiles, sourceName)
-  } catch (error) {
-    importStatus.value = "error"
-    importMessage.value = error instanceof Error ? error.message : "Dimension could not map that source file."
+    await completeProjectImport(
+      async () => ({
+        kind: "selected",
+        rootName: "Selected source",
+        files: [{ file: sourceFile, path: sourceFile.name }],
+      }),
+      `Reading ${sourceFile.name}; preparing the selected source file…`,
+      sourceFile.name,
+    )
   } finally {
     input.value = ""
   }
@@ -114,140 +109,78 @@ async function openProjectFolderPicker(): Promise<void> {
   if (isImporting.value) return
 
   const picker = nativeDirectoryPicker(window)
+  const selectFolder = picker
+    ? (onProgress: (rootName: string, fileCount: number) => void | Promise<void>) =>
+        selectNativeDirectory(picker, onProgress)
+    : () => selectFolderInput(projectFolderInput.value)
+  const selectingMessage = picker
+    ? "Choose a local folder in your browser dialog to map the project."
+    : "Choose a folder, then select Upload in your browser dialog. The browser calls this an upload because Dimension reads its files to map the project."
 
-  if (picker) {
-    importStatus.value = "loading"
-    importMessage.value = "Choose a local folder in your browser dialog to map the project."
-    await importFolderSelection(
-      await selectNativeDirectory(picker, async (rootName, fileCount) => {
-        if (fileCount !== 0 && fileCount !== 1 && fileCount % 100 !== 0) return
-        importMessage.value = fileCount
-          ? `Reading ${rootName}; found ${fileCount} file${fileCount === 1 ? "" : "s"}…`
-          : `Reading ${rootName}; scanning selected files…`
-        await nextFrame()
-      }),
-    )
+  await completeProjectImport(selectFolder, selectingMessage)
+}
+
+async function completeProjectImport(
+  selectFolder: (onProgress: FolderSelectionProgress) => Promise<FolderSelection>,
+  selectingMessage: string,
+  sourceName?: string,
+): Promise<void> {
+  const result = await runProjectImport(selectFolder, (phase) => reportProjectImportPhase(phase, selectingMessage))
+
+  if (result.kind === "canceled") {
+    importStatus.value = "error"
+    importMessage.value = "Folder selection was canceled. No files were attached."
     return
   }
 
-  openBrowserFolderPicker()
-}
-
-function openBrowserFolderPicker(): void {
-  const input = projectFolderInput.value
-
-  if (!input) {
-    void importFolderSelection({ kind: "unsupported" })
-    return
-  }
-
-  importStatus.value = "loading"
-  importMessage.value = "Choose a folder, then select Upload in your browser dialog. The browser calls this an upload because Dimension reads its files to map the project."
-  openFolderInput(input)
-}
-
-async function handleProjectFolderInput(): Promise<void> {
-  const input = projectFolderInput.value
-
-  if (!input) return
-
-  const selection = selectionFromFolderInput(input.files)
-  input.value = ""
-  await importFolderSelection(selection)
-}
-
-function handleProjectFolderInputCancel(): void {
-  void importFolderSelection({ kind: "canceled" })
-}
-
-async function importFolderSelection(selection: FolderSelection): Promise<void> {
-  if (selection.kind === "canceled") {
-    reportFolderSelectionCanceled()
-    return
-  }
-
-  if (selection.kind === "unsupported") {
+  if (result.kind === "unsupported") {
     importStatus.value = "error"
     importMessage.value = "This browser cannot select local folders."
     return
   }
 
-  if (selection.kind === "failed") {
+  if (result.kind === "failed") {
     importStatus.value = "error"
-    importMessage.value = selection.message
+    importMessage.value = result.message
     return
   }
 
-  if (!selection.files.length) {
-    importStatus.value = "error"
-    importMessage.value = `Dimension found no files in ${selection.rootName}.`
-    return
+  const selectedId = result.graph.nodes[0]?.id
+  const title = sourceName ?? result.rootName
+  const message = `Mapped ${directChildCount(result.graph, selectedId)} first-layer item${directChildCount(result.graph, selectedId) === 1 ? "" : "s"} from ${title}; ${result.plan.files.length} local path${result.plan.files.length === 1 ? "" : "s"} attached, with folder/file nodes kept and supported code files parsed.`
+
+  setWorkspace({
+    graph: result.graph,
+    title,
+    subtitle: "Source map with file/folder hierarchy and parsed TypeScript, JavaScript, and Ruby code beneath files.",
+    sourceName: title,
+    sourceUrl: undefined,
+    selectedNodeId: selectedId,
+    message,
+  })
+}
+
+async function reportProjectImportPhase(phase: ProjectImportPhase, selectingMessage: string): Promise<void> {
+  importStatus.value = "loading"
+
+  switch (phase.kind) {
+    case "selecting":
+      importMessage.value = selectingMessage
+      break
+    case "reading":
+      importMessage.value = phase.fileCount
+        ? `Reading ${phase.rootName}; found ${phase.fileCount} file${phase.fileCount === 1 ? "" : "s"}…`
+        : `Reading ${phase.rootName}; scanning selected files…`
+      break
+    case "planning":
+      importMessage.value = `Planning ${phase.rootName}; checking ${phase.selectedPathCount} attached local path${phase.selectedPathCount === 1 ? "" : "s"}…`
+      break
+    case "requesting":
+      importMessage.value = `Data-mining ${phase.rootName}; scanning ${phase.pathCount} local path${phase.pathCount === 1 ? "" : "s"}, parsing ${phase.parseableCount} supported code file${phase.parseableCount === 1 ? "" : "s"}${phase.skippedCount ? `, and skipping ${phase.skippedCount} generated path${phase.skippedCount === 1 ? "" : "s"}` : ""}…`
+      break
   }
 
-  importStatus.value = "loading"
-  importMessage.value = `Reading ${selection.rootName}; ${selection.files.length} file${selection.files.length === 1 ? "" : "s"} attached by your browser…`
   await nextFrame()
-
-  await importLocalProject(selection.rootName, selection.files)
-}
-
-async function importLocalProject(rootName: string, projectFiles: LocalProjectFile[]): Promise<void> {
-  showLocalProjectPreview(rootName, createProjectPreviewGraphFromFiles(rootName, projectFiles))
-  importMessage.value = `Data-mining ${rootName}; generated folders are skipped before supported code files are parsed…`
-  await nextFrame()
-
-  await importProjectFiles(rootName, projectFiles)
-}
-
-function reportFolderSelectionCanceled(): void {
-  importStatus.value = "error"
-  importMessage.value = "Folder selection was canceled. No files were attached."
-}
-
-async function importProjectFiles(rootName: string, projectFiles: LocalProjectFile[], sourceName = rootName): Promise<void> {
-  try {
-    importStatus.value = "loading"
-    importMessage.value = `Preparing ${projectFiles.length} selected local path${projectFiles.length === 1 ? "" : "s"}…`
-    await nextFrame()
-
-    const plan = planProjectImport(projectFiles)
-    importMessage.value = `Data-mining ${sourceName}; scanning ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"}, parsing ${plan.parseableCount} supported code file${plan.parseableCount === 1 ? "" : "s"}${plan.skippedCount ? `, and skipping ${plan.skippedCount} generated path${plan.skippedCount === 1 ? "" : "s"}` : ""}…`
-    await nextFrame()
-
-    const graph = await createGraphFromProjectFiles(rootName, plan.files)
-    const selectedId = graph.nodes[0]?.id
-    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${sourceName}; ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"} attached, with folder/file nodes kept and supported code files parsed.`
-
-    setWorkspace({
-      graph,
-      title: sourceName,
-      subtitle: "Source map with file/folder hierarchy and parsed TypeScript, JavaScript, and Ruby code beneath files.",
-      sourceName,
-      sourceUrl: undefined,
-      selectedNodeId: selectedId,
-      message,
-    })
-  } catch (error) {
-    importStatus.value = "error"
-    importMessage.value = error instanceof Error ? error.message : `Dimension could not map ${sourceName}.`
-  }
-}
-
-function showLocalProjectPreview(rootName: string, graph: SourceGraph, sourceName = rootName): void {
-  const selectedId = graph.nodes[0]?.id
-  const message = `Listed ${directChildCount(graph, selectedId)} top-level item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${sourceName}; data-mining supported code files…`
-
-  sourceGraph.value = graph
-  diagramTitle.value = sourceName
-  diagramSubtitle.value = "Source map with top-level files and folders while Dimension data-mines code relationships."
-  selectedSourceName.value = sourceName
-  selectedSourceUrl.value = undefined
-  selectedNodeId.value = selectedId
-  selectedExampleId.value = undefined
-  replaceUrlState()
-  syncDocumentTitle(sourceName)
-  importStatus.value = "loading"
-  importMessage.value = message
 }
 
 function selectNode(id: string): void {
@@ -409,8 +342,6 @@ function syncDocumentTitle(workspaceTitle: string): void {
             type="file"
             webkitdirectory
             multiple
-            @cancel="handleProjectFolderInputCancel"
-            @change="handleProjectFolderInput"
           />
         </div>
         <button type="button" :disabled="isImporting" @click="loadBuiltInSample">Load built-in sample</button>

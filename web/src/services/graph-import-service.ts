@@ -1,5 +1,5 @@
 import type { SourceGraph } from "@/types/source-graph"
-import { planProjectImport, type LocalProjectFile } from "@/services/project-folder-service"
+import type { ProjectImportPlan } from "@/services/project-folder-service"
 
 const serverApplicationOrigin = import.meta.env.VITE_SERVER_APPLICATION_ORIGIN?.replace(/\/$/, "") ?? ""
 
@@ -8,8 +8,7 @@ interface GraphImportResponse {
   message?: string
 }
 
-export async function createGraphFromProjectFiles(rootName: string, projectFiles: LocalProjectFile[]): Promise<SourceGraph> {
-  const plan = planProjectImport(projectFiles)
+export async function createGraphFromProjectImport(rootName: string, plan: ProjectImportPlan): Promise<SourceGraph> {
   const paths = plan.files.map((projectFile) => projectFile.path)
   const parseableFiles = plan.parseableFiles
   const formData = new FormData()
