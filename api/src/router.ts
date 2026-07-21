@@ -10,7 +10,6 @@ router.get("/", (_req: Request, res: Response) => {
   res.send("Hello World!")
 })
 
-router.post("/graphs", uploadMiddleware.single("file"), GraphsController.create)
 router.post("/graphs/project", uploadMiddleware.array("files"), GraphsController.createProject)
 
 export default router

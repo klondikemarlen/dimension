@@ -4,7 +4,7 @@ import { computed, nextTick, ref } from "vue"
 import SpellCanvas from "@/components/SpellCanvas.vue"
 import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
 import { publicProjectExamples, type PublicProjectExample } from "@/fixtures/publicProjectExamples"
-import { createGraphFromProjectFiles, createGraphFromSourceFile } from "@/services/graph-import-service"
+import { createGraphFromProjectFiles } from "@/services/graph-import-service"
 import {
   createProjectPreviewGraphFromFiles,
   planProjectImport,
@@ -87,26 +87,19 @@ async function importSourceFile(event: Event): Promise<void> {
 
   if (!sourceFile) return
 
-  importStatus.value = "loading"
-  importMessage.value = `Parsing ${sourceFile.name} through the server importer…`
+  const rootName = "Selected source"
+  const sourceName = sourceFile.name
+  const projectFiles: LocalProjectFile[] = [{ file: sourceFile, path: sourceFile.name }]
 
   try {
-    const graph = await createGraphFromSourceFile(sourceFile)
-    const selectedId = firstLayerNodeId(graph) ?? graph.nodes[0]?.id
-    const message = `Mapped ${graph.nodes.length} code parts and ${graph.links.length} links from ${sourceFile.name}.`
+    showLocalProjectPreview(rootName, createProjectPreviewGraphFromFiles(rootName, projectFiles), sourceName)
+    importMessage.value = `Data-mining ${sourceName}; parsing 1 supported code file…`
+    await nextFrame()
 
-    setWorkspace({
-      graph,
-      title: sourceFile.name,
-      subtitle: "High-level code map imported from the server parser.",
-      sourceName: sourceFile.name,
-      sourceUrl: undefined,
-      selectedNodeId: selectedId,
-      message,
-    })
+    await importProjectFiles(rootName, projectFiles, sourceName)
   } catch (error) {
     importStatus.value = "error"
-    importMessage.value = error instanceof Error ? error.message : "The source importer could not render that file."
+    importMessage.value = error instanceof Error ? error.message : "Dimension could not map that source file."
   } finally {
     input.value = ""
   }
@@ -148,49 +141,48 @@ function resetLocalProjectSelection(): void {
   importMessage.value = defaultImportMessage
 }
 
-async function importProjectFiles(rootName: string, projectFiles: LocalProjectFile[]): Promise<void> {
+async function importProjectFiles(rootName: string, projectFiles: LocalProjectFile[], sourceName = rootName): Promise<void> {
   try {
     importStatus.value = "loading"
     importMessage.value = `Preparing ${projectFiles.length} selected local path${projectFiles.length === 1 ? "" : "s"}…`
     await nextFrame()
 
     const plan = planProjectImport(projectFiles)
-
-    importMessage.value = `Data-mining ${rootName}; scanning ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"}, parsing ${plan.parseableCount} supported code file${plan.parseableCount === 1 ? "" : "s"}${plan.skippedCount ? `, and skipping ${plan.skippedCount} generated path${plan.skippedCount === 1 ? "" : "s"}` : ""}…`
+    importMessage.value = `Data-mining ${sourceName}; scanning ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"}, parsing ${plan.parseableCount} supported code file${plan.parseableCount === 1 ? "" : "s"}${plan.skippedCount ? `, and skipping ${plan.skippedCount} generated path${plan.skippedCount === 1 ? "" : "s"}` : ""}…`
     await nextFrame()
 
     const graph = await createGraphFromProjectFiles(rootName, plan.files)
     const selectedId = graph.nodes[0]?.id
-    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer items from ${rootName}; folder/file nodes are kept and supported code files were parsed.`
+    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${sourceName}; folder/file nodes are kept and supported code files were parsed.`
 
     setWorkspace({
       graph,
-      title: rootName,
-      subtitle: "Local project map with folder/file hierarchy and parsed TypeScript, JavaScript, and Ruby code beneath files.",
-      sourceName: rootName,
+      title: sourceName,
+      subtitle: "Source map with file/folder hierarchy and parsed TypeScript, JavaScript, and Ruby code beneath files.",
+      sourceName,
       sourceUrl: undefined,
       selectedNodeId: selectedId,
       message,
     })
   } catch (error) {
     importStatus.value = "error"
-    importMessage.value = error instanceof Error ? error.message : "Dimension could not map that local folder."
+    importMessage.value = error instanceof Error ? error.message : `Dimension could not map ${sourceName}.`
   }
 }
 
-function showLocalProjectPreview(rootName: string, graph: SourceGraph): void {
+function showLocalProjectPreview(rootName: string, graph: SourceGraph, sourceName = rootName): void {
   const selectedId = graph.nodes[0]?.id
-  const message = `Listed ${directChildCount(graph, selectedId)} top-level item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${rootName}; data-mining supported code files…`
+  const message = `Listed ${directChildCount(graph, selectedId)} top-level item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${sourceName}; data-mining supported code files…`
 
   sourceGraph.value = graph
-  diagramTitle.value = rootName
-  diagramSubtitle.value = "Local project map with top-level files and folders while Dimension data-mines code relationships."
-  selectedSourceName.value = rootName
+  diagramTitle.value = sourceName
+  diagramSubtitle.value = "Source map with top-level files and folders while Dimension data-mines code relationships."
+  selectedSourceName.value = sourceName
   selectedSourceUrl.value = undefined
   selectedNodeId.value = selectedId
   selectedExampleId.value = undefined
   replaceUrlState()
-  syncDocumentTitle(rootName)
+  syncDocumentTitle(sourceName)
   importStatus.value = "loading"
   importMessage.value = message
 }
@@ -334,12 +326,12 @@ function syncDocumentTitle(workspaceTitle: string): void {
           <span>Source file</span>
           <span class="source-import__control">
             <span class="source-import__button">Browse source file</span>
-            <span class="source-import__hint">TypeScript or Ruby</span>
+            <span class="source-import__hint">JS, TS, or Ruby</span>
           </span>
           <input
             class="source-import__hidden-input"
             type="file"
-            accept=".ts,.tsx,.rb,text/typescript,text/x-ruby"
+            accept=".js,.jsx,.ts,.tsx,.rb,text/javascript,text/typescript,text/x-ruby"
             :disabled="isImporting"
             @change="importSourceFile"
           />

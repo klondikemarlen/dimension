@@ -61,3 +61,11 @@ assert.deepEqual(
 )
 assert.equal(importPlan.skippedCount, 1)
 assert.equal(importPlan.parseableCount, 1)
+
+const singleSourceGraph = createProjectPreviewGraphFromFiles("Selected source", [
+  { file: projectFile("app.ts"), path: "app.ts" },
+])
+assert.deepEqual(
+  singleSourceGraph.nodes.map((node) => `${node.type}:${node.label}`),
+  ["folder:Selected source", "file:app.ts"],
+)
