@@ -5,6 +5,16 @@ export interface LocalProjectFile {
   path: string
 }
 
+export type ProjectDirectoryEntry =
+  | { kind: "file"; getFile(): Promise<File> }
+  | ProjectDirectoryHandle
+
+export interface ProjectDirectoryHandle {
+  name: string
+  kind: "directory"
+  entries(): AsyncIterable<[string, ProjectDirectoryEntry]>
+}
+
 export interface ProjectPreviewEntry {
   name: string
   type: "file" | "folder"
@@ -55,6 +65,32 @@ export function projectFilesFromInput(files: FileList): LocalProjectFile[] {
       path: parts.slice(1).join("/") || parts[0] || file.name,
     }
   })
+}
+
+export async function projectFilesFromDirectory(directory: ProjectDirectoryHandle): Promise<LocalProjectFile[]> {
+  const projectFiles: LocalProjectFile[] = []
+
+  async function visit(currentDirectory: ProjectDirectoryHandle, parentPath: string): Promise<void> {
+    for await (const [name, entry] of currentDirectory.entries()) {
+      const path = parentPath ? `${parentPath}/${name}` : name
+
+      if (isGeneratedPath(path)) continue
+
+      if (entry.kind === "file") {
+        projectFiles.push({ file: await entry.getFile(), path })
+
+        if (projectFiles.length > MAX_PROJECT_PATHS) {
+          throw new Error(`Dimension can map up to ${MAX_PROJECT_PATHS} project paths at once; more were selected.`)
+        }
+      } else {
+        await visit(entry, path)
+      }
+    }
+  }
+
+  await visit(directory, "")
+
+  return projectFiles
 }
 
 export function projectNameForFiles(files: FileList): string {
