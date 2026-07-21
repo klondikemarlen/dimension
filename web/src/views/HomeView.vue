@@ -120,6 +120,7 @@ async function openProjectFolderPicker(): Promise<void> {
     importMessage.value = "Choose a local folder in your browser dialog to map the project."
     await importFolderSelection(
       await selectNativeDirectory(picker, async (rootName, fileCount) => {
+        if (fileCount !== 0 && fileCount !== 1 && fileCount % 100 !== 0) return
         importMessage.value = fileCount
           ? `Reading ${rootName}; found ${fileCount} file${fileCount === 1 ? "" : "s"}…`
           : `Reading ${rootName}; scanning selected files…`
