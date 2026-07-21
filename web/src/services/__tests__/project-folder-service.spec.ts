@@ -8,6 +8,7 @@ import {
   projectNameForFiles,
   type LocalProjectFile,
 } from "../project-folder-service.ts"
+import { selectNativeDirectory, selectionFromFolderInput } from "../project-folder-selection-service.ts"
 
 function projectFile(path: string, size = 1): File {
   const parts = path.split("/")
@@ -94,6 +95,17 @@ const directoryProgress: number[] = []
 const directoryFiles = await projectFilesFromDirectory(selectedDirectory, (fileCount) => directoryProgress.push(fileCount))
 assert.deepEqual(directoryProgress, [1])
 assert.deepEqual(directoryFiles.map((file) => file.path), ["src/app.ts"])
+
+const nativeSelection = await selectNativeDirectory(async () => selectedDirectory)
+assert.equal(nativeSelection.kind, "selected")
+if (nativeSelection.kind === "selected") {
+  assert.equal(nativeSelection.rootName, "dimension-directory-picker-qa")
+  assert.deepEqual(nativeSelection.files.map((file) => file.path), ["src/app.ts"])
+}
+assert.deepEqual(await selectNativeDirectory(async () => Promise.reject(new DOMException("Canceled", "AbortError"))), {
+  kind: "canceled",
+})
+assert.deepEqual(selectionFromFolderInput(null), { kind: "canceled" })
 
 const singleSourceGraph = createProjectPreviewGraphFromFiles("Selected source", [
   { file: projectFile("app.ts"), path: "app.ts" },
