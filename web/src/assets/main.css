@@ -22,10 +22,10 @@
 }
 
 .hero-panel {
-  padding: clamp(1.5rem, 4vw, 3.5rem);
+  padding: clamp(1rem, 2vw, 1.5rem);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .eyebrow {
@@ -38,19 +38,18 @@
 }
 
 h1 {
-  max-width: 10ch;
   margin: 0;
   color: var(--color-heading);
   font-family: var(--font-display);
-  font-size: clamp(3rem, 7vw, 7rem);
-  line-height: 0.86;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .hero-copy {
-  max-width: 44rem;
-  margin: 1.5rem 0 0;
+  margin: 0.85rem 0 0;
   color: var(--color-muted);
-  font-size: clamp(1rem, 1.4vw, 1.25rem);
+  font-size: clamp(0.95rem, 1vw, 1.05rem);
 }
 
 .source-import {
@@ -59,7 +58,8 @@ h1 {
   gap: 0.75rem;
 }
 
-.source-import label {
+.source-import label,
+.source-import__field {
   display: grid;
   gap: 0.45rem;
   color: var(--color-heading);
@@ -78,6 +78,14 @@ h1 {
 .source-import input:disabled {
   cursor: progress;
   opacity: 0.7;
+}
+
+.source-import__hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .source-import button {
@@ -189,6 +197,7 @@ h1 {
   border: 1px solid var(--color-border);
   border-radius: 18px;
   background: rgba(255, 248, 225, 0.54);
+  overflow-wrap: anywhere;
 }
 
 .graph-details h2 {

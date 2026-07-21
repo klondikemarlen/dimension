@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import { extname } from "node:path"
+import { basename, extname } from "node:path"
 import {
   Node,
   Project,
@@ -28,11 +28,125 @@ export interface SourceGraph {
   links: SourceLink[]
 }
 
+export interface ProjectSourceFile {
+  path: string
+  relativePath: string
+  sourceName?: string
+}
+
+const GENERATED_DIRECTORIES = new Set([".git", ".vite", "coverage", "dist", "node_modules"])
+const PARSEABLE_EXTENSIONS = new Set([".js", ".jsx", ".rb", ".ts", ".tsx"])
+
+interface ProjectGraphBuilder {
+  nodes: Map<string, SourceNode>
+  links: SourceLink[]
+  linkIds: Set<string>
+}
+
 type CallableDeclaration = FunctionDeclaration | MethodDeclaration | ArrowFunction | FunctionExpression
 type RubyStackFrame = { kind: "class" | "method"; node: SourceNode } | { kind: "block" }
 
 export function createService(path: string, sourceName = path): SourceGraph {
   return extname(sourceName) === ".rb" ? createRubyGraph(path) : createTypeScriptGraph(path, sourceName)
+}
+
+export function createProjectService(rootName: string, relativePaths: string[], parseFiles: ProjectSourceFile[]): SourceGraph {
+  const safeRootName = rootName.trim() || "Selected project"
+  const graph: ProjectGraphBuilder = { nodes: new Map(), links: [], linkIds: new Set() }
+  const rootId = `folder:${safeRootName}`
+  const fileNodeIds = new Map<string, string>()
+
+  pushProjectNode(graph, { id: rootId, label: safeRootName, type: "folder" })
+  relativePaths.forEach((relativePath) => addProjectPath(graph, rootId, safeRootName, relativePath, fileNodeIds))
+  parseFiles.forEach((file) => {
+    const relativePath = normalizeRelativePath(file.relativePath)
+
+    if (!relativePath || !PARSEABLE_EXTENSIONS.has(extname(relativePath))) return
+
+    const fileId =
+      fileNodeIds.get(relativePath) ?? addProjectPath(graph, rootId, safeRootName, relativePath, fileNodeIds)
+
+    try {
+      attachParsedFileGraph(graph, fileId, createService(file.path, file.sourceName ?? basename(relativePath)))
+    } catch {
+      // Keep the file node. A bad source file should not make the folder map disappear.
+    }
+  })
+
+  return {
+    nodes: Array.from(graph.nodes.values()),
+    links: graph.links,
+  }
+}
+
+function addProjectPath(
+  graph: ProjectGraphBuilder,
+  rootId: string,
+  rootName: string,
+  relativePath: string,
+  fileNodeIds: Map<string, string>,
+): string {
+  const normalizedPath = normalizeRelativePath(relativePath)
+  const parts = normalizedPath.split("/").filter(Boolean)
+  let parentId = rootId
+  let finalId = rootId
+
+  parts.forEach((part, index) => {
+    const path = parts.slice(0, index + 1).join("/")
+    const isFile = index === parts.length - 1
+    const type = isFile ? "file" : "folder"
+    const nodeId = `${type}:${rootName}/${path}`
+
+    pushProjectNode(graph, { id: nodeId, label: part, type })
+    pushProjectLink(graph, parentId, nodeId)
+    parentId = nodeId
+    finalId = nodeId
+    if (isFile) fileNodeIds.set(normalizedPath, nodeId)
+  })
+
+  return finalId
+}
+
+function normalizeRelativePath(relativePath: string): string {
+  const parts = relativePath.split(/[\\/]+/).filter((part) => part && part !== "." && part !== "..")
+
+  if (parts.some((part) => GENERATED_DIRECTORIES.has(part))) return ""
+
+  return parts.join("/")
+}
+
+function attachParsedFileGraph(graph: ProjectGraphBuilder, fileId: string, parsedGraph: SourceGraph): void {
+  const incomingIds = new Set(parsedGraph.links.map((link) => link.target))
+
+  parsedGraph.nodes.forEach((node) => {
+    pushProjectNode(graph, {
+      ...node,
+      id: parsedNodeId(fileId, node.id),
+    })
+  })
+  parsedGraph.links.forEach((link) =>
+    pushProjectLink(graph, parsedNodeId(fileId, link.source), parsedNodeId(fileId, link.target)),
+  )
+  parsedGraph.nodes
+    .filter((node) => !incomingIds.has(node.id))
+    .forEach((node) => pushProjectLink(graph, fileId, parsedNodeId(fileId, node.id)))
+}
+
+function parsedNodeId(fileId: string, nodeId: string): string {
+  return `${fileId}/${nodeId}`
+}
+
+function pushProjectNode(graph: ProjectGraphBuilder, node: SourceNode): void {
+  if (!graph.nodes.has(node.id)) graph.nodes.set(node.id, node)
+}
+
+function pushProjectLink(graph: ProjectGraphBuilder, source: string, target: string): void {
+  const id = `${source}->${target}`
+
+  if (source === target || graph.linkIds.has(id)) return
+
+  graph.linkIds.add(id)
+  graph.links.push({ source, target })
 }
 
 function createTypeScriptGraph(path: string, sourceName: string): SourceGraph {

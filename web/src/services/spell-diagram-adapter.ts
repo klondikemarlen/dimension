@@ -96,7 +96,7 @@ function firstLayerNodes(nodes: SourceNode[], links: SourceLink[], focusNode: So
 }
 
 function isLayerNode(node: SourceNode): boolean {
-  return node.type === "class" || node.type === "folder"
+  return node.type === "class" || node.type === "file" || node.type === "folder"
 }
 
 function linkedNodeIds(links: SourceLink[], nodeId: string): Set<string> {
@@ -220,6 +220,7 @@ function runeKindForSourceType(type: string): RuneKind {
       return "policy"
     case "class":
     case "folder":
+    case "file":
     case "method":
       return "method"
     default:
@@ -259,6 +260,7 @@ function radiusForSourceType(type: string, isFocus: boolean): number {
       return 34
     case "class":
     case "folder":
+    case "file":
       return 62
     case "method":
       return 50
