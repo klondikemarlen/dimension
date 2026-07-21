@@ -6,12 +6,15 @@ import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
 import { publicProjectExamples, type PublicProjectExample } from "@/fixtures/publicProjectExamples"
 import { createGraphFromProjectFiles } from "@/services/graph-import-service"
 import {
+  nativeDirectoryPicker,
+  openFolderInput,
+  selectNativeDirectory,
+  selectionFromFolderInput,
+  type FolderSelection,
+} from "@/services/project-folder-selection-service"
+import {
   createProjectPreviewGraphFromFiles,
   planProjectImport,
-  projectFilesFromDirectory,
-  projectFilesFromInput,
-  projectNameForFiles,
-  type ProjectDirectoryHandle,
   type LocalProjectFile,
 } from "@/services/project-folder-service"
 import { createSpellDiagramFromSourceGraph } from "@/services/spell-diagram-adapter"
@@ -110,68 +113,81 @@ async function importSourceFile(event: Event): Promise<void> {
 async function openProjectFolderPicker(): Promise<void> {
   if (isImporting.value) return
 
-  const directoryPicker = (window as Window & { showDirectoryPicker?: () => Promise<ProjectDirectoryHandle> }).showDirectoryPicker
+  const picker = nativeDirectoryPicker(window)
 
-  if (directoryPicker) {
+  if (picker) {
     importStatus.value = "loading"
     importMessage.value = "Choose a local folder in your browser dialog to map the project."
-
-    try {
-      const directory = await directoryPicker.call(window)
-      importMessage.value = `Reading ${directory.name}; scanning selected files…`
-      await nextFrame()
-      const projectFiles = await projectFilesFromDirectory(directory, async (fileCount) => {
-        if (fileCount !== 1 && fileCount % 100 !== 0) return
-
-        importMessage.value = `Reading ${directory.name}; found ${fileCount} file${fileCount === 1 ? "" : "s"}…`
+    await importFolderSelection(
+      await selectNativeDirectory(picker, async (rootName, fileCount) => {
+        importMessage.value = fileCount
+          ? `Reading ${rootName}; found ${fileCount} file${fileCount === 1 ? "" : "s"}…`
+          : `Reading ${rootName}; scanning selected files…`
         await nextFrame()
-      })
-
-      if (!projectFiles.length) throw new Error(`Dimension found no files in ${directory.name}.`)
-
-      await importLocalProject(directory.name, projectFiles)
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
-        reportFolderSelectionCanceled()
-        return
-      }
-
-      importStatus.value = "error"
-      importMessage.value = error instanceof Error ? error.message : "Dimension could not open that local folder."
-    }
-
+      }),
+    )
     return
   }
 
+  openBrowserFolderPicker()
+}
+
+function openBrowserFolderPicker(): void {
+  const input = projectFolderInput.value
+
+  if (!input) {
+    void importFolderSelection({ kind: "unsupported" })
+    return
+  }
+
+  importStatus.value = "loading"
+  importMessage.value = "Choose a folder, then select Upload in your browser dialog. The browser calls this an upload because Dimension reads its files to map the project."
+  openFolderInput(input)
+}
+
+async function handleProjectFolderInput(): Promise<void> {
   const input = projectFolderInput.value
 
   if (!input) return
 
+  const selection = selectionFromFolderInput(input.files)
   input.value = ""
-  importStatus.value = "loading"
-  importMessage.value = "Choose a folder, then select Upload in your browser dialog. The browser calls this an upload because Dimension reads its files to map the project."
-  input.click()
+  await importFolderSelection(selection)
 }
 
-async function importProjectFolder(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
-  const files = input.files
+function handleProjectFolderInputCancel(): void {
+  void importFolderSelection({ kind: "canceled" })
+}
 
-  if (!files?.length) {
+async function importFolderSelection(selection: FolderSelection): Promise<void> {
+  if (selection.kind === "canceled") {
     reportFolderSelectionCanceled()
     return
   }
 
-  try {
-    const rootName = projectNameForFiles(files)
-    importStatus.value = "loading"
-    importMessage.value = `Reading ${rootName}; ${files.length} file${files.length === 1 ? "" : "s"} attached by your browser…`
-    await nextFrame()
-
-    await importLocalProject(rootName, projectFilesFromInput(files))
-  } finally {
-    input.value = ""
+  if (selection.kind === "unsupported") {
+    importStatus.value = "error"
+    importMessage.value = "This browser cannot select local folders."
+    return
   }
+
+  if (selection.kind === "failed") {
+    importStatus.value = "error"
+    importMessage.value = selection.message
+    return
+  }
+
+  if (!selection.files.length) {
+    importStatus.value = "error"
+    importMessage.value = `Dimension found no files in ${selection.rootName}.`
+    return
+  }
+
+  importStatus.value = "loading"
+  importMessage.value = `Reading ${selection.rootName}; ${selection.files.length} file${selection.files.length === 1 ? "" : "s"} attached by your browser…`
+  await nextFrame()
+
+  await importLocalProject(selection.rootName, selection.files)
 }
 
 async function importLocalProject(rootName: string, projectFiles: LocalProjectFile[]): Promise<void> {
@@ -183,8 +199,6 @@ async function importLocalProject(rootName: string, projectFiles: LocalProjectFi
 }
 
 function reportFolderSelectionCanceled(): void {
-  if (projectFolderInput.value?.files?.length) return
-
   importStatus.value = "error"
   importMessage.value = "Folder selection was canceled. No files were attached."
 }
@@ -394,8 +408,8 @@ function syncDocumentTitle(workspaceTitle: string): void {
             type="file"
             webkitdirectory
             multiple
-            @cancel="reportFolderSelectionCanceled"
-            @change="importProjectFolder"
+            @cancel="handleProjectFolderInputCancel"
+            @change="handleProjectFolderInput"
           />
         </div>
         <button type="button" :disabled="isImporting" @click="loadBuiltInSample">Load built-in sample</button>
