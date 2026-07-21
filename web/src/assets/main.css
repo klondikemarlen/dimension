@@ -10,7 +10,13 @@
   display: grid;
   gap: clamp(1.25rem, 3vw, 3rem);
   grid-template-columns: minmax(17rem, 0.3fr) minmax(0, 1fr);
-  align-items: stretch;
+  align-items: start;
+}
+
+.inspection-pane {
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
 }
 
 .hero-panel,
@@ -40,9 +46,9 @@
 h1 {
   margin: 0;
   color: var(--color-heading);
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 3vw, 3rem);
-  line-height: 1;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: clamp(1.15rem, 2.1vw, 2rem);
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
@@ -200,6 +206,10 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.inspection-pane .graph-details {
+  margin: 0;
+}
+
 .graph-details h2 {
   margin: 0;
   color: var(--color-heading);
@@ -235,6 +245,17 @@ h1 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.spell-canvas::before {
+  content: "graph://dimension";
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  background: rgba(31, 21, 12, 0.88);
+  color: var(--color-parchment);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
 }
 
 .spell-canvas svg {

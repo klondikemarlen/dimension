@@ -128,17 +128,25 @@ async function importSourceFile(event: Event): Promise<void> {
 }
 
 async function openLocalProject(): Promise<void> {
+  importStatus.value = "loading"
+  importMessage.value = "Choose a local folder. Dimension will skip generated folders and parse supported code files."
+
   const pickerWindow = window as WindowWithDirectoryPicker
 
   if (!pickerWindow.showDirectoryPicker) {
-    projectFolderInput.value?.click()
+    const input = projectFolderInput.value
+
+    if (!input) return
+
+    input.value = ""
+    input.addEventListener("cancel", resetLocalProjectSelection, { once: true })
+    input.click()
     return
   }
 
   try {
     const directory = await pickerWindow.showDirectoryPicker()
 
-    importStatus.value = "loading"
     importMessage.value = `Scanning ${directory.name}; generated folders are skipped before supported code files are sent to the parser…`
     await nextFrame()
 
@@ -160,7 +168,12 @@ async function importProjectFolder(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const files = input.files
 
-  if (!files?.length) return
+  input.removeEventListener("cancel", resetLocalProjectSelection)
+
+  if (!files?.length) {
+    resetLocalProjectSelection()
+    return
+  }
 
   try {
     await importProjectFiles(projectNameForFiles(files), projectFilesFromInput(files))
@@ -169,11 +182,19 @@ async function importProjectFolder(event: Event): Promise<void> {
   }
 }
 
+function resetLocalProjectSelection(): void {
+  importStatus.value = "idle"
+  importMessage.value = defaultImportMessage
+}
+
 async function importProjectFiles(rootName: string, projectFiles: LocalProjectFile[]): Promise<void> {
   try {
+    importStatus.value = "loading"
+    importMessage.value = `Preparing ${projectFiles.length} selected local path${projectFiles.length === 1 ? "" : "s"}…`
+    await nextFrame()
+
     const plan = planProjectImport(projectFiles)
 
-    importStatus.value = "loading"
     importMessage.value = `Reading ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"} from ${rootName}; sending ${plan.parseableCount} supported code file${plan.parseableCount === 1 ? "" : "s"} to the parser${plan.skippedCount ? ` and skipping ${plan.skippedCount} generated path${plan.skippedCount === 1 ? "" : "s"}` : ""}…`
     await nextFrame()
 
@@ -386,7 +407,6 @@ function syncDocumentTitle(workspaceTitle: string): void {
             type="file"
             webkitdirectory
             multiple
-            :disabled="isImporting"
             @change="importProjectFolder"
           />
         </div>
@@ -423,6 +443,10 @@ function syncDocumentTitle(workspaceTitle: string): void {
           <dd>{{ graphLinkCount }}</dd>
         </div>
       </dl>
+    </section>
+
+    <section class="inspection-pane" aria-label="Dimension graph inspection">
+      <SpellCanvas :diagram="currentDiagram" @select-node="selectNode" />
       <section class="graph-details" aria-label="Selected rune details">
         <p class="eyebrow">Navigation</p>
         <h2>{{ selectedNode?.label ?? "Click a rune" }}</h2>
@@ -445,7 +469,5 @@ function syncDocumentTitle(workspaceTitle: string): void {
         </div>
       </section>
     </section>
-
-    <SpellCanvas :diagram="currentDiagram" @select-node="selectNode" />
   </main>
 </template>
