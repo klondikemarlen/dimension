@@ -105,12 +105,15 @@ async function importSourceFile(event: Event): Promise<void> {
   }
 }
 
-function prepareProjectFolderInput(): void {
+function openProjectFolderPicker(): void {
   const input = projectFolderInput.value
 
   if (!input || isImporting.value) return
 
   input.value = ""
+  importStatus.value = "loading"
+  importMessage.value = "Choose a folder, then select Upload in your browser dialog. The browser calls this an upload because Dimension reads its files to map the project."
+  input.click()
 }
 
 async function importProjectFolder(event: Event): Promise<void> {
@@ -336,21 +339,19 @@ function syncDocumentTitle(workspaceTitle: string): void {
             @change="importSourceFile"
           />
         </label>
-        <label class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
+        <div class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Open another project</span>
-          <span class="source-import__button">Open local folder</span>
+          <button type="button" :disabled="isImporting" @click="openProjectFolderPicker">Open local folder</button>
           <input
             ref="projectFolderInput"
             class="source-import__hidden-input"
             type="file"
             webkitdirectory
             multiple
-            :disabled="isImporting"
-            @click="prepareProjectFolderInput"
             @cancel="resetLocalProjectSelection"
             @change="importProjectFolder"
           />
-        </label>
+        </div>
         <button type="button" :disabled="isImporting" @click="loadBuiltInSample">Load built-in sample</button>
         <div class="source-import__examples" aria-label="Public project examples">
           <span>Public examples</span>
