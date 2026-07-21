@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import assert from "node:assert/strict"
 
-import { createService } from "./create-service.ts"
+import { createProjectService, createService } from "./create-service.ts"
 
 const directory = await mkdtemp(join(tmpdir(), "dimension-parser-"))
 const typeScriptSourcePath = join(directory, "sample.ts")
@@ -71,6 +71,22 @@ await writeFile(
 
 await copyFile(rubySourcePath, uploadedRubyPath)
 
+const projectGraph = createProjectService("sample-app", [
+  "src/controllers/users-controller.ts",
+  "src/controllers/broken.ts",
+  "README.md",
+  "node_modules/noise/index.ts",
+], [
+  {
+    path: typeScriptSourcePath,
+    relativePath: "src/controllers/users-controller.ts",
+  },
+  {
+    path: join(directory, "missing.ts"),
+    relativePath: "src/controllers/broken.ts",
+  },
+])
+
 try {
   const typeScriptGraph = createService(typeScriptSourcePath)
   const typeScriptNodeIdentifiers = typeScriptGraph.nodes.map((node) => node.id)
@@ -109,6 +125,25 @@ try {
   assert(rubyNodeIdentifiers.includes("ruby:class:UsersController:method:index:response:0"))
   assert(rubyNodeIdentifiers.includes("ruby:class:UsersController:method:index:error:0"))
   assert(rubyGraph.links.every((link) => rubyNodeIdentifiers.includes(link.source) && rubyNodeIdentifiers.includes(link.target)))
+
+  const projectNodeIdentifiers = projectGraph.nodes.map((node) => node.id)
+
+  assert(projectNodeIdentifiers.includes("folder:sample-app"))
+  assert(projectNodeIdentifiers.includes("folder:sample-app/src"))
+  assert(projectNodeIdentifiers.includes("folder:sample-app/src/controllers"))
+  assert(projectNodeIdentifiers.includes("file:sample-app/src/controllers/users-controller.ts"))
+  assert(projectNodeIdentifiers.includes("file:sample-app/src/controllers/broken.ts"))
+  assert(projectNodeIdentifiers.includes("file:sample-app/README.md"))
+  assert(!projectNodeIdentifiers.some((identifier) => identifier.includes("node_modules")))
+  assert(projectNodeIdentifiers.includes("file:sample-app/src/controllers/users-controller.ts/class:UsersController"))
+  assert(
+    projectGraph.links.some(
+      (link) =>
+        link.source === "file:sample-app/src/controllers/users-controller.ts" &&
+        link.target === "file:sample-app/src/controllers/users-controller.ts/class:UsersController",
+    ),
+  )
+  assert(projectGraph.links.every((link) => projectNodeIdentifiers.includes(link.source) && projectNodeIdentifiers.includes(link.target)))
 } finally {
   await rm(directory, { recursive: true, force: true })
 }

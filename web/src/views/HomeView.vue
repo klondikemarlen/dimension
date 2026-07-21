@@ -4,16 +4,21 @@ import { computed, nextTick, ref } from "vue"
 import SpellCanvas from "@/components/SpellCanvas.vue"
 import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
 import { publicProjectExamples, type PublicProjectExample } from "@/fixtures/publicProjectExamples"
-import { createGraphFromSourceFile } from "@/services/graph-import-service"
-import { createProjectGraphFromFiles } from "@/services/project-folder-service"
+import {
+  createGraphFromProjectFiles,
+  createGraphFromSourceFile,
+  planProjectImport,
+  type LocalProjectFile,
+} from "@/services/graph-import-service"
 import { createSpellDiagramFromSourceGraph } from "@/services/spell-diagram-adapter"
 import type { SourceGraph } from "@/types/source-graph"
 import type { RuneNode, SpellDiagram } from "@/types/spell-diagram"
 
 const builtInSourceName = "Built-in controller fixture"
-const defaultImportMessage = "Upload a source file for layered code review, or select a folder for a filename-only map."
+const defaultImportMessage = "Choose a source file for layered code review, or open a local folder for a project map."
 const builtInSubtitle = "Controller fixture for reviewing project organization across method, policy, query, and response layers."
 const workspaceStorageKey = "dimension:last-workspace"
+const generatedPathSegments = new Set([".git", ".vite", "coverage", "dist", "node_modules"])
 const defaultPageTitle = "Dimension Project Intelligence"
 const urlExample = readExampleFromUrl()
 const storedWorkspace = readPersistedWorkspace()
@@ -29,6 +34,22 @@ interface PersistedWorkspace {
   sourceUrl?: string
 }
 
+interface LocalDirectoryHandle {
+  kind: "directory"
+  name: string
+  values(): AsyncIterable<LocalDirectoryHandle | LocalFileHandle>
+}
+
+interface LocalFileHandle {
+  kind: "file"
+  name: string
+  getFile(): Promise<File>
+}
+
+type WindowWithDirectoryPicker = Window & {
+  showDirectoryPicker?: () => Promise<LocalDirectoryHandle>
+}
+
 const sourceGraph = ref<SourceGraph | undefined>(persistedWorkspace?.graph)
 const diagramTitle = ref(persistedWorkspace?.title ?? builtInSourceName)
 const diagramSubtitle = ref(persistedWorkspace?.subtitle ?? builtInSubtitle)
@@ -39,6 +60,9 @@ const selectedNodeId = ref<string | undefined>(persistedWorkspace?.selectedNodeI
 const importStatus = ref<"idle" | "loading" | "success" | "error">(persistedWorkspace ? "success" : "idle")
 const importMessage = ref(persistedWorkspace?.message ?? defaultImportMessage)
 const isImporting = computed(() => importStatus.value === "loading")
+const projectFolderInput = ref<HTMLInputElement>()
+const graphNodeCount = computed(() => sourceGraph.value?.nodes.length ?? usersControllerIndexDiagram.nodes.length)
+const graphLinkCount = computed(() => sourceGraph.value?.links.length ?? usersControllerIndexDiagram.edges.length)
 const currentDiagram = computed<SpellDiagram>(() => {
   if (!sourceGraph.value) return usersControllerIndexDiagram
 
@@ -103,37 +127,110 @@ async function importSourceFile(event: Event): Promise<void> {
   }
 }
 
+async function openLocalProject(): Promise<void> {
+  const pickerWindow = window as WindowWithDirectoryPicker
+
+  if (!pickerWindow.showDirectoryPicker) {
+    projectFolderInput.value?.click()
+    return
+  }
+
+  try {
+    const directory = await pickerWindow.showDirectoryPicker()
+
+    importStatus.value = "loading"
+    importMessage.value = `Scanning ${directory.name}; generated folders are skipped before supported code files are sent to the parser…`
+    await nextFrame()
+
+    const projectFiles = await projectFilesFromDirectory(directory)
+    await importProjectFiles(directory.name, projectFiles)
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      importStatus.value = "idle"
+      importMessage.value = defaultImportMessage
+      return
+    }
+
+    importStatus.value = "error"
+    importMessage.value = error instanceof Error ? error.message : "Dimension could not open that local folder."
+  }
+}
+
 async function importProjectFolder(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const files = input.files
 
   if (!files?.length) return
 
-  importStatus.value = "loading"
-  importMessage.value = `Reading ${files.length} selected path${files.length === 1 ? "" : "s"} locally…`
-  await nextFrame()
-
   try {
-    const graph = createProjectGraphFromFiles(files)
-    const folderName = graph.nodes[0]?.label ?? "Selected project"
+    await importProjectFiles(projectNameForFiles(files), projectFilesFromInput(files))
+  } finally {
+    input.value = ""
+  }
+}
+
+async function importProjectFiles(rootName: string, projectFiles: LocalProjectFile[]): Promise<void> {
+  try {
+    const plan = planProjectImport(projectFiles)
+
+    importStatus.value = "loading"
+    importMessage.value = `Reading ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"} from ${rootName}; sending ${plan.parseableCount} supported code file${plan.parseableCount === 1 ? "" : "s"} to the parser${plan.skippedCount ? ` and skipping ${plan.skippedCount} generated path${plan.skippedCount === 1 ? "" : "s"}` : ""}…`
+    await nextFrame()
+
+    const graph = await createGraphFromProjectFiles(rootName, plan.files)
     const selectedId = graph.nodes[0]?.id
-    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer items from ${folderName}; file contents stayed local.`
+    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer items from ${rootName}; folder/file nodes are kept and supported code files were parsed.`
 
     setWorkspace({
       graph,
-      title: folderName,
-      subtitle: "Filename-only project map. This MVP shows the selected folder's direct children only.",
-      sourceName: folderName,
+      title: rootName,
+      subtitle: "Local project map with folder/file hierarchy and parsed TypeScript, JavaScript, and Ruby code beneath files.",
+      sourceName: rootName,
       sourceUrl: undefined,
       selectedNodeId: selectedId,
       message,
     })
-  } catch {
+  } catch (error) {
     importStatus.value = "error"
-    importMessage.value = "Dimension could not map that folder."
-  } finally {
-    input.value = ""
+    importMessage.value = error instanceof Error ? error.message : "Dimension could not map that local folder."
   }
+}
+
+async function projectFilesFromDirectory(directory: LocalDirectoryHandle, prefix = ""): Promise<LocalProjectFile[]> {
+  const projectFiles: LocalProjectFile[] = []
+
+  for await (const entry of directory.values()) {
+    if (entry.kind === "directory" && generatedPathSegments.has(entry.name)) continue
+
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name
+
+    if (entry.kind === "file") {
+      projectFiles.push({ file: await entry.getFile(), path })
+    } else {
+      projectFiles.push(...(await projectFilesFromDirectory(entry, path)))
+    }
+  }
+
+  return projectFiles
+}
+
+function projectFilesFromInput(files: FileList): LocalProjectFile[] {
+  return Array.from(files).map((file) => {
+    const relativePath = file.webkitRelativePath || file.name
+    const parts = relativePath.split("/").filter(Boolean)
+
+    return {
+      file,
+      path: parts.slice(1).join("/") || parts[0] || file.name,
+    }
+  })
+}
+
+function projectNameForFiles(files: FileList): string {
+  const relativePath = files[0]?.webkitRelativePath
+  const rootName = relativePath?.split("/").filter(Boolean)[0]
+
+  return rootName || "Selected project"
 }
 
 function selectNode(id: string): void {
@@ -264,13 +361,13 @@ function syncDocumentTitle(workspaceTitle: string): void {
 <template>
   <main class="workspace">
     <section class="hero-panel" aria-labelledby="dimension-title">
-      <p class="eyebrow">Project intelligence for humans and agents</p>
-      <h1 id="dimension-title">See what AI built.</h1>
-      <p class="hero-copy">
-        Dimension maps project code into browsable layers so humans and AI agents can inspect structure,
-        spot organization problems, and ask for focused changes without reading every file by hand.
-      </p>
-      <form class="source-import" aria-label="Import source file or project folder">
+      <p class="eyebrow">Current workspace</p>
+      <h1 id="dimension-title">{{ selectedSourceName }}</h1>
+      <p class="hero-copy">{{ diagramSubtitle }}</p>
+      <form class="source-import" aria-label="Open another source file or local project">
+        <p class="source-import__status" :class="`source-import__status--${importStatus}`" aria-live="polite">
+          {{ importMessage }}
+        </p>
         <label>
           <span>Source file</span>
           <input
@@ -280,10 +377,19 @@ function syncDocumentTitle(workspaceTitle: string): void {
             @change="importSourceFile"
           />
         </label>
-        <label>
-          <span>Project folder</span>
-          <input type="file" webkitdirectory multiple :disabled="isImporting" @change="importProjectFolder" />
-        </label>
+        <div class="source-import__field">
+          <span>Open another project</span>
+          <button type="button" :disabled="isImporting" @click="openLocalProject">Open local folder</button>
+          <input
+            ref="projectFolderInput"
+            class="source-import__hidden-input"
+            type="file"
+            webkitdirectory
+            multiple
+            :disabled="isImporting"
+            @change="importProjectFolder"
+          />
+        </div>
         <button type="button" :disabled="isImporting" @click="loadBuiltInSample">Load built-in sample</button>
         <div class="source-import__examples" aria-label="Public project examples">
           <span>Public examples</span>
@@ -297,9 +403,6 @@ function syncDocumentTitle(workspaceTitle: string): void {
             {{ example.label }}
           </button>
         </div>
-        <p class="source-import__status" :class="`source-import__status--${importStatus}`" aria-live="polite">
-          {{ importMessage }}
-        </p>
       </form>
       <dl class="framework-grid" aria-label="Current source graph">
         <div>
@@ -312,12 +415,12 @@ function syncDocumentTitle(workspaceTitle: string): void {
           </dd>
         </div>
         <div>
-          <dt>Visual shell</dt>
-          <dd>Vue 3 + Scalable Vector Graphics</dd>
+          <dt>Nodes</dt>
+          <dd>{{ graphNodeCount }}</dd>
         </div>
         <div>
-          <dt>Source import</dt>
-          <dd>Express + ts-morph</dd>
+          <dt>Links</dt>
+          <dd>{{ graphLinkCount }}</dd>
         </div>
       </dl>
       <section class="graph-details" aria-label="Selected rune details">
