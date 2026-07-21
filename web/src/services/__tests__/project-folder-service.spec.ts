@@ -90,7 +90,9 @@ const selectedDirectory = {
   },
 }
 
-const directoryFiles = await projectFilesFromDirectory(selectedDirectory)
+const directoryProgress: number[] = []
+const directoryFiles = await projectFilesFromDirectory(selectedDirectory, (fileCount) => directoryProgress.push(fileCount))
+assert.deepEqual(directoryProgress, [1])
 assert.deepEqual(directoryFiles.map((file) => file.path), ["src/app.ts"])
 
 const singleSourceGraph = createProjectPreviewGraphFromFiles("Selected source", [

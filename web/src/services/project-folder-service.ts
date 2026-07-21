@@ -67,7 +67,10 @@ export function projectFilesFromInput(files: FileList): LocalProjectFile[] {
   })
 }
 
-export async function projectFilesFromDirectory(directory: ProjectDirectoryHandle): Promise<LocalProjectFile[]> {
+export async function projectFilesFromDirectory(
+  directory: ProjectDirectoryHandle,
+  onProgress?: (fileCount: number) => void | Promise<void>,
+): Promise<LocalProjectFile[]> {
   const projectFiles: LocalProjectFile[] = []
 
   async function visit(currentDirectory: ProjectDirectoryHandle, parentPath: string): Promise<void> {
@@ -78,6 +81,7 @@ export async function projectFilesFromDirectory(directory: ProjectDirectoryHandl
 
       if (entry.kind === "file") {
         projectFiles.push({ file: await entry.getFile(), path })
+        await onProgress?.(projectFiles.length)
 
         if (projectFiles.length > MAX_PROJECT_PATHS) {
           throw new Error(`Dimension can map up to ${MAX_PROJECT_PATHS} project paths at once; more were selected.`)

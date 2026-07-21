@@ -118,10 +118,21 @@ async function openProjectFolderPicker(): Promise<void> {
 
     try {
       const directory = await directoryPicker.call(window)
-      await importLocalProject(directory.name, await projectFilesFromDirectory(directory))
+      importMessage.value = `Reading ${directory.name}; scanning selected files…`
+      await nextFrame()
+      const projectFiles = await projectFilesFromDirectory(directory, async (fileCount) => {
+        if (fileCount !== 1 && fileCount % 100 !== 0) return
+
+        importMessage.value = `Reading ${directory.name}; found ${fileCount} file${fileCount === 1 ? "" : "s"}…`
+        await nextFrame()
+      })
+
+      if (!projectFiles.length) throw new Error(`Dimension found no files in ${directory.name}.`)
+
+      await importLocalProject(directory.name, projectFiles)
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        resetLocalProjectSelection()
+        reportFolderSelectionCanceled()
         return
       }
 
@@ -147,12 +158,17 @@ async function importProjectFolder(event: Event): Promise<void> {
   const files = input.files
 
   if (!files?.length) {
-    resetLocalProjectSelection()
+    reportFolderSelectionCanceled()
     return
   }
 
   try {
-    await importLocalProject(projectNameForFiles(files), projectFilesFromInput(files))
+    const rootName = projectNameForFiles(files)
+    importStatus.value = "loading"
+    importMessage.value = `Reading ${rootName}; ${files.length} file${files.length === 1 ? "" : "s"} attached by your browser…`
+    await nextFrame()
+
+    await importLocalProject(rootName, projectFilesFromInput(files))
   } finally {
     input.value = ""
   }
@@ -166,9 +182,11 @@ async function importLocalProject(rootName: string, projectFiles: LocalProjectFi
   await importProjectFiles(rootName, projectFiles)
 }
 
-function resetLocalProjectSelection(): void {
-  importStatus.value = "idle"
-  importMessage.value = defaultImportMessage
+function reportFolderSelectionCanceled(): void {
+  if (projectFolderInput.value?.files?.length) return
+
+  importStatus.value = "error"
+  importMessage.value = "Folder selection was canceled. No files were attached."
 }
 
 async function importProjectFiles(rootName: string, projectFiles: LocalProjectFile[], sourceName = rootName): Promise<void> {
@@ -183,7 +201,7 @@ async function importProjectFiles(rootName: string, projectFiles: LocalProjectFi
 
     const graph = await createGraphFromProjectFiles(rootName, plan.files)
     const selectedId = graph.nodes[0]?.id
-    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${sourceName}; folder/file nodes are kept and supported code files were parsed.`
+    const message = `Mapped ${directChildCount(graph, selectedId)} first-layer item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${sourceName}; ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"} attached, with folder/file nodes kept and supported code files parsed.`
 
     setWorkspace({
       graph,
@@ -376,7 +394,7 @@ function syncDocumentTitle(workspaceTitle: string): void {
             type="file"
             webkitdirectory
             multiple
-            @cancel="resetLocalProjectSelection"
+            @cancel="reportFolderSelectionCanceled"
             @change="importProjectFolder"
           />
         </div>
