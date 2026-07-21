@@ -344,8 +344,7 @@ function syncDocumentTitle(workspaceTitle: string): void {
           <button type="button" :disabled="isImporting" @click="openProjectFolderPicker">Open local folder</button>
           <input
             ref="projectFolderInput"
-            aria-hidden="true"
-            tabindex="-1"
+            hidden
             class="source-import__hidden-input"
             type="file"
             webkitdirectory
