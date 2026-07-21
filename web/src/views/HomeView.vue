@@ -166,7 +166,6 @@ async function importLocalProject(rootName: string, projectFiles: LocalProjectFi
   await importProjectFiles(rootName, projectFiles)
 }
 
-
 function resetLocalProjectSelection(): void {
   importStatus.value = "idle"
   importMessage.value = defaultImportMessage
