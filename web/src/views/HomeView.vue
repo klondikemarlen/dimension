@@ -4,12 +4,14 @@ import { computed, nextTick, ref } from "vue"
 import SpellCanvas from "@/components/SpellCanvas.vue"
 import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
 import { publicProjectExamples, type PublicProjectExample } from "@/fixtures/publicProjectExamples"
+import { createGraphFromProjectFiles, createGraphFromSourceFile } from "@/services/graph-import-service"
 import {
-  createGraphFromProjectFiles,
-  createGraphFromSourceFile,
+  createProjectPreviewGraphFromFiles,
   planProjectImport,
+  projectFilesFromInput,
+  projectNameForFiles,
   type LocalProjectFile,
-} from "@/services/graph-import-service"
+} from "@/services/project-folder-service"
 import { createSpellDiagramFromSourceGraph } from "@/services/spell-diagram-adapter"
 import type { SourceGraph } from "@/types/source-graph"
 import type { RuneNode, SpellDiagram } from "@/types/spell-diagram"
@@ -18,7 +20,6 @@ const builtInSourceName = "Built-in controller fixture"
 const defaultImportMessage = "Choose a source file for layered code review, or open a local folder for a project map."
 const builtInSubtitle = "Controller fixture for reviewing project organization across method, policy, query, and response layers."
 const workspaceStorageKey = "dimension:last-workspace"
-const generatedPathSegments = new Set([".git", ".vite", "coverage", "dist", "node_modules"])
 const defaultPageTitle = "Dimension Project Intelligence"
 const urlExample = readExampleFromUrl()
 const storedWorkspace = readPersistedWorkspace()
@@ -32,22 +33,6 @@ interface PersistedWorkspace {
   message: string
   exampleId?: string
   sourceUrl?: string
-}
-
-interface LocalDirectoryHandle {
-  kind: "directory"
-  name: string
-  values(): AsyncIterable<LocalDirectoryHandle | LocalFileHandle>
-}
-
-interface LocalFileHandle {
-  kind: "file"
-  name: string
-  getFile(): Promise<File>
-}
-
-type WindowWithDirectoryPicker = Window & {
-  showDirectoryPicker?: () => Promise<LocalDirectoryHandle>
 }
 
 const sourceGraph = ref<SourceGraph | undefined>(persistedWorkspace?.graph)
@@ -127,54 +112,17 @@ async function importSourceFile(event: Event): Promise<void> {
   }
 }
 
-async function openLocalProject(): Promise<void> {
-  importStatus.value = "loading"
-  importMessage.value = "Choose a local folder. Dimension will skip generated folders and parse supported code files."
+function prepareProjectFolderInput(): void {
+  const input = projectFolderInput.value
 
-  const pickerWindow = window as WindowWithDirectoryPicker
+  if (!input || isImporting.value) return
 
-  if (!pickerWindow.showDirectoryPicker) {
-    const input = projectFolderInput.value
-
-    if (!input) return
-
-    input.value = ""
-    input.addEventListener("cancel", resetLocalProjectSelection, { once: true })
-    input.click()
-    return
-  }
-
-  try {
-    const directory = await pickerWindow.showDirectoryPicker()
-
-    importMessage.value = `Listing top-level files and folders in ${directory.name}…`
-    await nextFrame()
-
-    const previewGraph = await createTopLevelProjectGraphFromDirectory(directory)
-    showLocalProjectPreview(directory.name, previewGraph)
-
-    importMessage.value = `Data-mining ${directory.name}; generated folders are skipped before supported code files are parsed…`
-    await nextFrame()
-
-    const projectFiles = await projectFilesFromDirectory(directory)
-    await importProjectFiles(directory.name, projectFiles)
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      importStatus.value = "idle"
-      importMessage.value = defaultImportMessage
-      return
-    }
-
-    importStatus.value = "error"
-    importMessage.value = error instanceof Error ? error.message : "Dimension could not open that local folder."
-  }
+  input.value = ""
 }
 
 async function importProjectFolder(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement
   const files = input.files
-
-  input.removeEventListener("cancel", resetLocalProjectSelection)
 
   if (!files?.length) {
     resetLocalProjectSelection()
@@ -185,7 +133,7 @@ async function importProjectFolder(event: Event): Promise<void> {
     const rootName = projectNameForFiles(files)
     const projectFiles = projectFilesFromInput(files)
 
-    showLocalProjectPreview(rootName, createTopLevelProjectGraphFromFiles(rootName, projectFiles))
+    showLocalProjectPreview(rootName, createProjectPreviewGraphFromFiles(rootName, projectFiles))
     importMessage.value = `Data-mining ${rootName}; generated folders are skipped before supported code files are parsed…`
     await nextFrame()
 
@@ -245,87 +193,6 @@ function showLocalProjectPreview(rootName: string, graph: SourceGraph): void {
   syncDocumentTitle(rootName)
   importStatus.value = "loading"
   importMessage.value = message
-}
-
-async function createTopLevelProjectGraphFromDirectory(directory: LocalDirectoryHandle): Promise<SourceGraph> {
-  const rootName = directory.name.trim() || "Selected project"
-  const graph = createProjectRootGraph(rootName)
-
-  for await (const entry of directory.values()) {
-    addTopLevelProjectNode(graph, rootName, entry.name, entry.kind === "directory" ? "folder" : "file")
-  }
-
-  return graph
-}
-
-function createTopLevelProjectGraphFromFiles(rootName: string, projectFiles: LocalProjectFile[]): SourceGraph {
-  const graph = createProjectRootGraph(rootName)
-  const topLevelPaths = new Map<string, "file" | "folder">()
-
-  projectFiles.forEach((projectFile) => {
-    const [firstSegment, secondSegment] = projectFile.path.split("/").filter(Boolean)
-
-    if (!firstSegment) return
-
-    topLevelPaths.set(firstSegment, secondSegment ? "folder" : "file")
-  })
-
-  topLevelPaths.forEach((type, name) => addTopLevelProjectNode(graph, rootName, name, type))
-
-  return graph
-}
-
-function createProjectRootGraph(rootName: string): SourceGraph {
-  const safeRootName = rootName.trim() || "Selected project"
-
-  return {
-    nodes: [{ id: `folder:${safeRootName}`, label: safeRootName, type: "folder" }],
-    links: [],
-  }
-}
-
-function addTopLevelProjectNode(graph: SourceGraph, rootName: string, name: string, type: "file" | "folder"): void {
-  const id = `${type}:${rootName}/${name}`
-
-  graph.nodes.push({ id, label: name, type })
-  graph.links.push({ source: graph.nodes[0].id, target: id })
-}
-
-async function projectFilesFromDirectory(directory: LocalDirectoryHandle, prefix = ""): Promise<LocalProjectFile[]> {
-  const projectFiles: LocalProjectFile[] = []
-
-  for await (const entry of directory.values()) {
-    if (entry.kind === "directory" && generatedPathSegments.has(entry.name)) continue
-
-    const path = prefix ? `${prefix}/${entry.name}` : entry.name
-
-    if (entry.kind === "file") {
-      projectFiles.push({ file: await entry.getFile(), path })
-    } else {
-      projectFiles.push(...(await projectFilesFromDirectory(entry, path)))
-    }
-  }
-
-  return projectFiles
-}
-
-function projectFilesFromInput(files: FileList): LocalProjectFile[] {
-  return Array.from(files).map((file) => {
-    const relativePath = file.webkitRelativePath || file.name
-    const parts = relativePath.split("/").filter(Boolean)
-
-    return {
-      file,
-      path: parts.slice(1).join("/") || parts[0] || file.name,
-    }
-  })
-}
-
-function projectNameForFiles(files: FileList): string {
-  const relativePath = files[0]?.webkitRelativePath
-  const rootName = relativePath?.split("/").filter(Boolean)[0]
-
-  return rootName || "Selected project"
 }
 
 function selectNode(id: string): void {
@@ -477,18 +344,21 @@ function syncDocumentTitle(workspaceTitle: string): void {
             @change="importSourceFile"
           />
         </label>
-        <div class="source-import__field">
+        <label class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Open another project</span>
-          <button type="button" :disabled="isImporting" @click="openLocalProject">Open local folder</button>
+          <span class="source-import__button">Open local folder</span>
           <input
             ref="projectFolderInput"
             class="source-import__hidden-input"
             type="file"
             webkitdirectory
             multiple
+            :disabled="isImporting"
+            @click="prepareProjectFolderInput"
+            @cancel="resetLocalProjectSelection"
             @change="importProjectFolder"
           />
-        </div>
+        </label>
         <button type="button" :disabled="isImporting" @click="loadBuiltInSample">Load built-in sample</button>
         <div class="source-import__examples" aria-label="Public project examples">
           <span>Public examples</span>
