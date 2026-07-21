@@ -46,6 +46,7 @@ const selectedExampleId = ref<string | undefined>(persistedWorkspace?.exampleId)
 const selectedNodeId = ref<string | undefined>(persistedWorkspace?.selectedNodeId)
 const importStatus = ref<"idle" | "loading" | "success" | "error">(persistedWorkspace ? "success" : "idle")
 const importMessage = ref(persistedWorkspace?.message ?? defaultImportMessage)
+const shouldOfferBrowserUploadFallback = ref(false)
 const isImporting = computed(() => importStatus.value === "loading")
 const projectFolderInput = ref<HTMLInputElement>()
 const graphNodeCount = computed(() => sourceGraph.value?.nodes.length ?? usersControllerIndexDiagram.nodes.length)
@@ -72,6 +73,7 @@ function loadBuiltInSample(): void {
   selectedSourceUrl.value = undefined
   selectedNodeId.value = undefined
   importStatus.value = "idle"
+  shouldOfferBrowserUploadFallback.value = false
   selectedExampleId.value = undefined
   importMessage.value = defaultImportMessage
   clearPersistedWorkspace()
@@ -107,12 +109,13 @@ async function importSourceFile(event: Event): Promise<void> {
   }
 }
 
-async function openProjectFolderPicker(): Promise<void> {
+async function openProjectFolderPicker(useBrowserUploadFallback = false): Promise<void> {
   if (isImporting.value) return
 
+  shouldOfferBrowserUploadFallback.value = false
   const directoryPicker = (window as Window & { showDirectoryPicker?: () => Promise<ProjectDirectoryHandle> }).showDirectoryPicker
 
-  if (directoryPicker) {
+  if (directoryPicker && !useBrowserUploadFallback) {
     importStatus.value = "loading"
     importMessage.value = "Choose a local folder in your browser dialog to map the project."
 
@@ -132,7 +135,7 @@ async function openProjectFolderPicker(): Promise<void> {
       await importLocalProject(directory.name, projectFiles)
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
-        reportFolderSelectionCanceled()
+        reportFolderSelectionCanceled(true)
         return
       }
 
@@ -182,11 +185,14 @@ async function importLocalProject(rootName: string, projectFiles: LocalProjectFi
   await importProjectFiles(rootName, projectFiles)
 }
 
-function reportFolderSelectionCanceled(): void {
+function reportFolderSelectionCanceled(offerBrowserUploadFallback = false): void {
   if (projectFolderInput.value?.files?.length) return
 
+  shouldOfferBrowserUploadFallback.value = offerBrowserUploadFallback
   importStatus.value = "error"
-  importMessage.value = "Folder selection was canceled. No files were attached."
+  importMessage.value = offerBrowserUploadFallback
+    ? "No folder was attached. Select a folder, then click Select in your browser dialog."
+    : "Folder selection was canceled. No files were attached."
 }
 
 async function importProjectFiles(rootName: string, projectFiles: LocalProjectFile[], sourceName = rootName): Promise<void> {
@@ -248,6 +254,7 @@ function setWorkspace(workspace: PersistedWorkspace): void {
   selectedSourceUrl.value = workspace.sourceUrl
   selectedNodeId.value = workspace.selectedNodeId
   importStatus.value = "success"
+  shouldOfferBrowserUploadFallback.value = false
   selectedExampleId.value = workspace.exampleId
   importMessage.value = persistWorkspace(workspace)
     ? workspace.message
@@ -370,6 +377,14 @@ function syncDocumentTitle(workspaceTitle: string): void {
         <p class="source-import__status" :class="`source-import__status--${importStatus}`" aria-live="polite">
           {{ importMessage }}
         </p>
+        <button
+          v-if="shouldOfferBrowserUploadFallback"
+          type="button"
+          :disabled="isImporting"
+          @click="openProjectFolderPicker(true)"
+        >
+          Use browser upload fallback
+        </button>
         <label class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Source file</span>
           <span class="source-import__control">
@@ -386,7 +401,7 @@ function syncDocumentTitle(workspaceTitle: string): void {
         </label>
         <div class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Open another project</span>
-          <button type="button" :disabled="isImporting" @click="openProjectFolderPicker">Open local folder</button>
+          <button type="button" :disabled="isImporting" @click="openProjectFolderPicker()">Open local folder</button>
           <input
             ref="projectFolderInput"
             hidden
@@ -394,7 +409,7 @@ function syncDocumentTitle(workspaceTitle: string): void {
             type="file"
             webkitdirectory
             multiple
-            @cancel="reportFolderSelectionCanceled"
+            @cancel="reportFolderSelectionCanceled()"
             @change="importProjectFolder"
           />
         </div>
