@@ -147,7 +147,13 @@ async function openLocalProject(): Promise<void> {
   try {
     const directory = await pickerWindow.showDirectoryPicker()
 
-    importMessage.value = `Scanning ${directory.name}; generated folders are skipped before supported code files are sent to the parser…`
+    importMessage.value = `Listing top-level files and folders in ${directory.name}…`
+    await nextFrame()
+
+    const previewGraph = await createTopLevelProjectGraphFromDirectory(directory)
+    showLocalProjectPreview(directory.name, previewGraph)
+
+    importMessage.value = `Data-mining ${directory.name}; generated folders are skipped before supported code files are parsed…`
     await nextFrame()
 
     const projectFiles = await projectFilesFromDirectory(directory)
@@ -176,7 +182,14 @@ async function importProjectFolder(event: Event): Promise<void> {
   }
 
   try {
-    await importProjectFiles(projectNameForFiles(files), projectFilesFromInput(files))
+    const rootName = projectNameForFiles(files)
+    const projectFiles = projectFilesFromInput(files)
+
+    showLocalProjectPreview(rootName, createTopLevelProjectGraphFromFiles(rootName, projectFiles))
+    importMessage.value = `Data-mining ${rootName}; generated folders are skipped before supported code files are parsed…`
+    await nextFrame()
+
+    await importProjectFiles(rootName, projectFiles)
   } finally {
     input.value = ""
   }
@@ -195,7 +208,7 @@ async function importProjectFiles(rootName: string, projectFiles: LocalProjectFi
 
     const plan = planProjectImport(projectFiles)
 
-    importMessage.value = `Reading ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"} from ${rootName}; sending ${plan.parseableCount} supported code file${plan.parseableCount === 1 ? "" : "s"} to the parser${plan.skippedCount ? ` and skipping ${plan.skippedCount} generated path${plan.skippedCount === 1 ? "" : "s"}` : ""}…`
+    importMessage.value = `Data-mining ${rootName}; scanning ${plan.files.length} local path${plan.files.length === 1 ? "" : "s"}, parsing ${plan.parseableCount} supported code file${plan.parseableCount === 1 ? "" : "s"}${plan.skippedCount ? `, and skipping ${plan.skippedCount} generated path${plan.skippedCount === 1 ? "" : "s"}` : ""}…`
     await nextFrame()
 
     const graph = await createGraphFromProjectFiles(rootName, plan.files)
@@ -215,6 +228,67 @@ async function importProjectFiles(rootName: string, projectFiles: LocalProjectFi
     importStatus.value = "error"
     importMessage.value = error instanceof Error ? error.message : "Dimension could not map that local folder."
   }
+}
+
+function showLocalProjectPreview(rootName: string, graph: SourceGraph): void {
+  const selectedId = graph.nodes[0]?.id
+  const message = `Listed ${directChildCount(graph, selectedId)} top-level item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${rootName}; data-mining supported code files…`
+
+  sourceGraph.value = graph
+  diagramTitle.value = rootName
+  diagramSubtitle.value = "Local project map with top-level files and folders while Dimension data-mines code relationships."
+  selectedSourceName.value = rootName
+  selectedSourceUrl.value = undefined
+  selectedNodeId.value = selectedId
+  selectedExampleId.value = undefined
+  replaceUrlState()
+  syncDocumentTitle(rootName)
+  importStatus.value = "loading"
+  importMessage.value = message
+}
+
+async function createTopLevelProjectGraphFromDirectory(directory: LocalDirectoryHandle): Promise<SourceGraph> {
+  const rootName = directory.name.trim() || "Selected project"
+  const graph = createProjectRootGraph(rootName)
+
+  for await (const entry of directory.values()) {
+    addTopLevelProjectNode(graph, rootName, entry.name, entry.kind === "directory" ? "folder" : "file")
+  }
+
+  return graph
+}
+
+function createTopLevelProjectGraphFromFiles(rootName: string, projectFiles: LocalProjectFile[]): SourceGraph {
+  const graph = createProjectRootGraph(rootName)
+  const topLevelPaths = new Map<string, "file" | "folder">()
+
+  projectFiles.forEach((projectFile) => {
+    const [firstSegment, secondSegment] = projectFile.path.split("/").filter(Boolean)
+
+    if (!firstSegment) return
+
+    topLevelPaths.set(firstSegment, secondSegment ? "folder" : "file")
+  })
+
+  topLevelPaths.forEach((type, name) => addTopLevelProjectNode(graph, rootName, name, type))
+
+  return graph
+}
+
+function createProjectRootGraph(rootName: string): SourceGraph {
+  const safeRootName = rootName.trim() || "Selected project"
+
+  return {
+    nodes: [{ id: `folder:${safeRootName}`, label: safeRootName, type: "folder" }],
+    links: [],
+  }
+}
+
+function addTopLevelProjectNode(graph: SourceGraph, rootName: string, name: string, type: "file" | "folder"): void {
+  const id = `${type}:${rootName}/${name}`
+
+  graph.nodes.push({ id, label: name, type })
+  graph.links.push({ source: graph.nodes[0].id, target: id })
 }
 
 async function projectFilesFromDirectory(directory: LocalDirectoryHandle, prefix = ""): Promise<LocalProjectFile[]> {
@@ -389,9 +463,14 @@ function syncDocumentTitle(workspaceTitle: string): void {
         <p class="source-import__status" :class="`source-import__status--${importStatus}`" aria-live="polite">
           {{ importMessage }}
         </p>
-        <label>
+        <label class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Source file</span>
+          <span class="source-import__control">
+            <span class="source-import__button">Browse source file</span>
+            <span class="source-import__hint">TypeScript or Ruby</span>
+          </span>
           <input
+            class="source-import__hidden-input"
             type="file"
             accept=".ts,.tsx,.rb,text/typescript,text/x-ruby"
             :disabled="isImporting"

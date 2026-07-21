@@ -64,7 +64,6 @@ h1 {
   gap: 0.75rem;
 }
 
-.source-import label,
 .source-import__field {
   display: grid;
   gap: 0.45rem;
@@ -72,7 +71,29 @@ h1 {
   font-weight: 700;
 }
 
-.source-import input {
+.source-import__control {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.source-import__button,
+.source-import button {
+  justify-self: start;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-parchment);
+  color: var(--color-heading);
+  cursor: pointer;
+  padding: 0.65rem 1rem;
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.source-import__field > input:not(.source-import__hidden-input) {
   width: 100%;
   border: 1px solid var(--color-border);
   border-radius: 14px;
@@ -81,7 +102,25 @@ h1 {
   padding: 0.75rem;
 }
 
-.source-import input:disabled {
+.source-import__field > input:not(.source-import__hidden-input):disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.source-import__field:focus-within .source-import__button,
+.source-import button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.source-import__hint {
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.source-import button:disabled,
+.source-import__field--disabled .source-import__button {
   cursor: progress;
   opacity: 0.7;
 }
@@ -92,31 +131,6 @@ h1 {
   height: 1px;
   opacity: 0;
   pointer-events: none;
-}
-
-.source-import button {
-  justify-self: start;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-parchment);
-  color: var(--color-heading);
-  cursor: pointer;
-  padding: 0.65rem 1rem;
-  font-weight: 700;
-}
-
-.source-import button:disabled {
-  cursor: progress;
-  opacity: 0.7;
-}
-
-.source-import input::file-selector-button {
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-parchment);
-  color: var(--color-heading);
-  cursor: pointer;
-  font-weight: 700;
 }
 
 .source-import__examples {
