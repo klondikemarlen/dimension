@@ -1,13 +1,14 @@
 const assert = require("node:assert/strict")
-const { mkdtemp, mkdir, readFile, writeFile } = require("node:fs/promises")
+const { mkdir, mkdtemp, readFile, rm, writeFile } = require("node:fs/promises")
 const { tmpdir } = require("node:os")
 const { join } = require("node:path")
 const test = require("node:test")
 
 const { createWorkspaceGraph, openWorkspace, workspaceName } = require("./workspace.cjs")
 
-test("creates a native project graph and persists metadata outside the root", async () => {
+test("creates a native project graph and persists metadata outside the root", async (t) => {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "dimension-workspace-"))
+  t.after(() => rm(temporaryDirectory, { force: true, recursive: true }))
   const projectRoot = join(temporaryDirectory, "project")
   const userDataPath = join(temporaryDirectory, "dimension-data")
   await mkdir(join(projectRoot, "src"), { recursive: true })
@@ -39,9 +40,12 @@ test("reports native picker cancellation without reading a project", async () =>
   assert.deepEqual(result, { kind: "canceled" })
 })
 
-test("reports inaccessible native roots", async () => {
+test("reports inaccessible native roots", async (t) => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "dimension-missing-root-"))
+  t.after(() => rm(temporaryDirectory, { force: true, recursive: true }))
+
   await assert.rejects(
-    createWorkspaceGraph(join(tmpdir(), "dimension-missing-root"), "missing-root"),
+    createWorkspaceGraph(join(temporaryDirectory, "missing-root"), "missing-root"),
     /Dimension could not read missing-root/,
   )
 })
