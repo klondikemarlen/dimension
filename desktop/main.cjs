@@ -1,5 +1,7 @@
-const { app, BrowserWindow, ipcMain } = require("electron")
+const { app, BrowserWindow, dialog, ipcMain } = require("electron")
 const path = require("node:path")
+
+const { openWorkspace } = require("./workspace.cjs")
 
 const rendererUrl = new URL(process.env.DIMENSION_WEB_ORIGIN)
 const rendererOrigin = rendererUrl.origin
@@ -25,9 +27,13 @@ async function createWindow() {
   await window.loadURL(rendererUrl.href)
 
   if (process.env.DIMENSION_DESKTOP_SMOKE_TEST) {
-    const runtime = await window.webContents.executeJavaScript("window.dimensionDesktop.runtime()")
+    const [runtime, hasWorkspacePicker] = await window.webContents.executeJavaScript(
+      "Promise.all([window.dimensionDesktop.runtime(), typeof window.dimensionDesktop.openWorkspace === 'function'])",
+    )
 
-    if (runtime.platform !== process.platform) throw new Error("Desktop preload bridge is unavailable.")
+    if (runtime.platform !== process.platform || !hasWorkspacePicker) {
+      throw new Error("Desktop preload bridge is unavailable.")
+    }
     app.exit()
   }
 }
@@ -36,6 +42,9 @@ app
   .whenReady()
   .then(async () => {
     ipcMain.handle("dimension:runtime", () => ({ platform: process.platform }))
+    ipcMain.handle("dimension:open-workspace", () =>
+      openWorkspace({ dialog, userDataPath: app.getPath("userData") }),
+    )
     await createWindow()
 
     app.on("activate", () => {

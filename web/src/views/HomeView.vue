@@ -108,6 +108,12 @@ async function importSourceFile(event: Event): Promise<void> {
 async function openProjectFolderPicker(): Promise<void> {
   if (isImporting.value) return
 
+  const desktop = window.dimensionDesktop
+  if (desktop) {
+    await openNativeWorkspace(desktop)
+    return
+  }
+
   const picker = nativeDirectoryPicker(window)
   const selectFolder = picker
     ? (onProgress: (rootName: string, fileCount: number) => void | Promise<void>) =>
@@ -118,6 +124,36 @@ async function openProjectFolderPicker(): Promise<void> {
     : "Choose a folder, then select Upload in your browser dialog. The browser calls this an upload because Dimension reads its files to map the project."
 
   await completeProjectImport(selectFolder, selectingMessage)
+}
+
+async function openNativeWorkspace(desktop: NonNullable<Window["dimensionDesktop"]>): Promise<void> {
+  importStatus.value = "loading"
+  importMessage.value = "Opening your local folder picker…"
+
+  try {
+    const result = await desktop.openWorkspace()
+    if (result.kind === "canceled") {
+      importStatus.value = "error"
+      importMessage.value = "Folder selection was canceled. No project was opened."
+      return
+    }
+
+    const { workspace } = result
+    const selectedId = workspace.graph.nodes[0]?.id
+    const firstLayerCount = directChildCount(workspace.graph, selectedId)
+    setWorkspace({
+      graph: workspace.graph,
+      title: workspace.name,
+      subtitle: "Native workspace with local folder/file hierarchy.",
+      sourceName: workspace.name,
+      sourceUrl: undefined,
+      selectedNodeId: selectedId,
+      message: `Mapped ${firstLayerCount} first-layer item${firstLayerCount === 1 ? "" : "s"} from ${workspace.name}; the local workspace root stays in the desktop host.`,
+    })
+  } catch (error) {
+    importStatus.value = "error"
+    importMessage.value = error instanceof Error ? error.message : "Dimension could not open the selected folder."
+  }
 }
 
 async function completeProjectImport(
