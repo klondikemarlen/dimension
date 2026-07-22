@@ -1,7 +1,7 @@
-import { createGraphFromProjectImport } from "@/services/graph-import-service"
-import type { FolderSelection, FolderSelectionProgress } from "@/services/project-folder-selection-service"
-import { planProjectImport, type ProjectImportPlan } from "@/services/project-folder-service"
-import type { SourceGraph } from "@/types/source-graph"
+import { createGraphFromProjectImport } from "./graph-import-service.ts"
+import type { FolderSelection, FolderSelectionProgress } from "./project-folder-selection-service.ts"
+import { planProjectImport, type ProjectImportPlan } from "./project-folder-service.ts"
+import type { SourceGraph } from "../types/source-graph.ts"
 
 export type ProjectImportPhase =
   | { kind: "selecting" }
@@ -23,8 +23,13 @@ type ProjectImportResult =
 
 type FolderSelector = (onProgress: FolderSelectionProgress) => Promise<FolderSelection>
 type PhaseReporter = (phase: ProjectImportPhase) => void | Promise<void>
+type GraphCreator = (rootName: string, plan: ProjectImportPlan) => Promise<SourceGraph>
 
-export async function runProjectImport(selectFolder: FolderSelector, report: PhaseReporter): Promise<ProjectImportResult> {
+export async function runProjectImport(
+  selectFolder: FolderSelector,
+  report: PhaseReporter,
+  createGraph: GraphCreator = createGraphFromProjectImport,
+): Promise<ProjectImportResult> {
   const selectionPromise = selectFolder((rootName, fileCount) => {
     if (fileCount !== 0 && fileCount !== 1 && fileCount % 100 !== 0) return
 
@@ -56,7 +61,7 @@ export async function runProjectImport(selectFolder: FolderSelector, report: Pha
       kind: "success",
       rootName: selection.rootName,
       plan,
-      graph: await createGraphFromProjectImport(selection.rootName, plan),
+      graph: await createGraph(selection.rootName, plan),
     }
   } catch (error) {
     return {

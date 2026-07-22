@@ -1,7 +1,7 @@
-import type { SourceGraph } from "@/types/source-graph"
-import type { ProjectImportPlan } from "@/services/project-folder-service"
+import type { ProjectImportPlan } from "./project-folder-service.ts"
+import type { SourceGraph } from "../types/source-graph.ts"
 
-const serverApplicationOrigin = import.meta.env.VITE_SERVER_APPLICATION_ORIGIN?.replace(/\/$/, "") ?? ""
+const serverApplicationOrigin = import.meta.env?.VITE_SERVER_APPLICATION_ORIGIN?.replace(/\/$/, "") ?? ""
 
 interface GraphImportResponse {
   graph?: SourceGraph
