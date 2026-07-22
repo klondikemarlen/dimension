@@ -9,7 +9,6 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "test:folder": "node --experimental-strip-types src/services/__tests__/project-folder-service.spec.ts",
     "lint": "eslint . --fix",
     "format": "prettier --write src/"
   },
