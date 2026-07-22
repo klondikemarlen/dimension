@@ -1,11 +1,8 @@
 const { app, BrowserWindow, ipcMain } = require("electron")
 const path = require("node:path")
 
-const rendererOrigin = process.env.DIMENSION_WEB_ORIGIN
-
-if (!rendererOrigin) {
-  throw new Error("DIMENSION_WEB_ORIGIN must point to the Dimension web renderer.")
-}
+const rendererUrl = new URL(process.env.DIMENSION_WEB_ORIGIN)
+const rendererOrigin = rendererUrl.origin
 
 async function createWindow() {
   const window = new BrowserWindow({
@@ -20,7 +17,12 @@ async function createWindow() {
     },
   })
 
-  await window.loadURL(rendererOrigin)
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }))
+  window.webContents.on("will-navigate", (event, url) => {
+    if (new URL(url).origin !== rendererOrigin) event.preventDefault()
+  })
+
+  await window.loadURL(rendererUrl.href)
 
   if (process.env.DIMENSION_DESKTOP_SMOKE_TEST) {
     const runtime = await window.webContents.executeJavaScript("window.dimensionDesktop.runtime()")
