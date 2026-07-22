@@ -1,8 +1,19 @@
 # Dimension
 
-A project intelligence workspace for humans and AI agents.
+A desktop project intelligence workspace for humans and AI agents.
 
-Dimension maps source files and project folders into browsable structural layers so you can see what an AI built, judge whether the project is well organized, and ask for focused changes without reading every file by hand.
+Dimension will open real local workspaces through a native desktop host, map their source files into browsable structural layers, and grow toward an IDE for understanding and changing AI-built projects.
+
+## Product Direction
+
+Dimension is moving from browser folder-upload flows to an Electron desktop workspace:
+
+- native folder selection and a durable local workspace root
+- Vue renderer with narrowly scoped, typed desktop IPC
+- Node/ts-morph graph analysis against local files
+- future Git, terminal, and language-service integrations
+
+Workspace metadata belongs outside the opened repository. Browser ZIP or repository imports may remain sharing/viewing paths, but are not the primary IDE workflow.
 
 ## Recommended IDE Setup
 
