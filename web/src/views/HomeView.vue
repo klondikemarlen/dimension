@@ -1,26 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from "vue"
+import { computed, ref } from "vue"
 
 import SpellCanvas from "@/components/SpellCanvas.vue"
 import { usersControllerIndexDiagram } from "@/fixtures/usersControllerIndex"
 import { publicProjectExamples, type PublicProjectExample } from "@/fixtures/publicProjectExamples"
-import {
-  nativeDirectoryPicker,
-  selectFolderInput,
-  selectNativeDirectory,
-  type FolderSelection,
-  type FolderSelectionProgress,
-} from "@/services/project-folder-selection-service"
-import {
-  runProjectImport,
-  type ProjectImportPhase,
-} from "@/services/project-import-workflow-service"
+import { createGraphFromSourceFile } from "@/services/source-graph-import-service"
 import { createSpellDiagramFromSourceGraph } from "@/services/spell-diagram-adapter"
 import type { SourceGraph } from "@/types/source-graph"
 import type { RuneNode, SpellDiagram } from "@/types/spell-diagram"
 
 const builtInSourceName = "Built-in controller fixture"
-const defaultImportMessage = "Choose a source file for layered code review, or open a local folder for a project map."
+const desktop = window.dimensionDesktop
+const defaultImportMessage = desktop
+  ? "Choose a source file for layered code review, or open a local folder for a project map."
+  : "Choose a source file for layered code review."
 const builtInSubtitle = "Controller fixture for reviewing project organization across method, policy, query, and response layers."
 const workspaceStorageKey = "dimension:last-workspace"
 const defaultPageTitle = "Dimension Project Intelligence"
@@ -48,7 +41,6 @@ const selectedNodeId = ref<string | undefined>(persistedWorkspace?.selectedNodeI
 const importStatus = ref<"idle" | "loading" | "success" | "error">(persistedWorkspace ? "success" : "idle")
 const importMessage = ref(persistedWorkspace?.message ?? defaultImportMessage)
 const isImporting = computed(() => importStatus.value === "loading")
-const projectFolderInput = ref<HTMLInputElement>()
 const graphNodeCount = computed(() => sourceGraph.value?.nodes.length ?? usersControllerIndexDiagram.nodes.length)
 const graphLinkCount = computed(() => sourceGraph.value?.links.length ?? usersControllerIndexDiagram.edges.length)
 const currentDiagram = computed<SpellDiagram>(() => {
@@ -90,40 +82,34 @@ async function importSourceFile(event: Event): Promise<void> {
 
   if (!sourceFile) return
 
+  importStatus.value = "loading"
+  importMessage.value = `Reading ${sourceFile.name}; preparing the selected source file…`
+
   try {
-    await completeProjectImport(
-      async () => ({
-        kind: "selected",
-        rootName: "Selected source",
-        files: [{ file: sourceFile, path: sourceFile.name }],
-      }),
-      `Reading ${sourceFile.name}; preparing the selected source file…`,
-      sourceFile.name,
-    )
+    const graph = await createGraphFromSourceFile(sourceFile)
+    const selectedId = graph.nodes[0]?.id
+
+    setWorkspace({
+      graph,
+      title: sourceFile.name,
+      subtitle: "Source map with parsed TypeScript, JavaScript, or Ruby code.",
+      sourceName: sourceFile.name,
+      sourceUrl: undefined,
+      selectedNodeId: selectedId,
+      message: `Mapped ${directChildCount(graph, selectedId)} first-layer item${directChildCount(graph, selectedId) === 1 ? "" : "s"} from ${sourceFile.name}.`,
+    })
+  } catch (error) {
+    importStatus.value = "error"
+    importMessage.value = error instanceof Error ? error.message : "Dimension could not map the selected source file."
   } finally {
     input.value = ""
   }
 }
 
-async function openProjectFolderPicker(): Promise<void> {
-  if (isImporting.value) return
+async function openNativeWorkspacePicker(): Promise<void> {
+  if (!desktop || isImporting.value) return
 
-  const desktop = window.dimensionDesktop
-  if (desktop) {
-    await openNativeWorkspace(desktop)
-    return
-  }
-
-  const picker = nativeDirectoryPicker(window)
-  const selectFolder = picker
-    ? (onProgress: (rootName: string, fileCount: number) => void | Promise<void>) =>
-        selectNativeDirectory(picker, onProgress)
-    : () => selectFolderInput(projectFolderInput.value)
-  const selectingMessage = picker
-    ? "Choose a local folder in your browser dialog to map the project."
-    : "Choose a folder, then select Upload in your browser dialog. The browser calls this an upload because Dimension reads its files to map the project."
-
-  await completeProjectImport(selectFolder, selectingMessage)
+  await openNativeWorkspace(desktop)
 }
 
 async function openNativeWorkspace(desktop: NonNullable<Window["dimensionDesktop"]>): Promise<void> {
@@ -156,68 +142,6 @@ async function openNativeWorkspace(desktop: NonNullable<Window["dimensionDesktop
   }
 }
 
-async function completeProjectImport(
-  selectFolder: (onProgress: FolderSelectionProgress) => Promise<FolderSelection>,
-  selectingMessage: string,
-  sourceName?: string,
-): Promise<void> {
-  const result = await runProjectImport(selectFolder, (phase) => reportProjectImportPhase(phase, selectingMessage))
-
-  if (result.kind === "canceled") {
-    importStatus.value = "error"
-    importMessage.value = "Folder selection was canceled. No files were attached."
-    return
-  }
-
-  if (result.kind === "unsupported") {
-    importStatus.value = "error"
-    importMessage.value = "This browser cannot select local folders."
-    return
-  }
-
-  if (result.kind === "failed") {
-    importStatus.value = "error"
-    importMessage.value = result.message
-    return
-  }
-
-  const selectedId = result.graph.nodes[0]?.id
-  const title = sourceName ?? result.rootName
-  const message = `Mapped ${directChildCount(result.graph, selectedId)} first-layer item${directChildCount(result.graph, selectedId) === 1 ? "" : "s"} from ${title}; ${result.plan.files.length} local path${result.plan.files.length === 1 ? "" : "s"} attached, with folder/file nodes kept and supported code files parsed.`
-
-  setWorkspace({
-    graph: result.graph,
-    title,
-    subtitle: "Source map with file/folder hierarchy and parsed TypeScript, JavaScript, and Ruby code beneath files.",
-    sourceName: title,
-    sourceUrl: undefined,
-    selectedNodeId: selectedId,
-    message,
-  })
-}
-
-async function reportProjectImportPhase(phase: ProjectImportPhase, selectingMessage: string): Promise<void> {
-  importStatus.value = "loading"
-
-  switch (phase.kind) {
-    case "selecting":
-      importMessage.value = selectingMessage
-      break
-    case "reading":
-      importMessage.value = phase.fileCount
-        ? `Reading ${phase.rootName}; found ${phase.fileCount} file${phase.fileCount === 1 ? "" : "s"}…`
-        : `Reading ${phase.rootName}; scanning selected files…`
-      break
-    case "planning":
-      importMessage.value = `Planning ${phase.rootName}; checking ${phase.selectedPathCount} attached local path${phase.selectedPathCount === 1 ? "" : "s"}…`
-      break
-    case "requesting":
-      importMessage.value = `Data-mining ${phase.rootName}; scanning ${phase.pathCount} local path${phase.pathCount === 1 ? "" : "s"}, parsing ${phase.parseableCount} supported code file${phase.parseableCount === 1 ? "" : "s"}${phase.skippedCount ? `, and skipping ${phase.skippedCount} generated path${phase.skippedCount === 1 ? "" : "s"}` : ""}…`
-      break
-  }
-
-  await nextFrame()
-}
 
 function selectNode(id: string): void {
   selectedNodeId.value = id
@@ -278,10 +202,6 @@ function connectedNodes(diagram: SpellDiagram, node: RuneNode | undefined): Rune
   return diagram.nodes.filter((candidate) => connectionIds.has(candidate.id))
 }
 
-async function nextFrame(): Promise<void> {
-  await nextTick()
-  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-}
 
 function readPersistedWorkspace(): PersistedWorkspace | undefined {
   try {
@@ -350,7 +270,7 @@ function syncDocumentTitle(workspaceTitle: string): void {
       <p class="eyebrow">Current workspace</p>
       <h1 id="dimension-title">{{ selectedSourceName }}</h1>
       <p class="hero-copy">{{ diagramSubtitle }}</p>
-      <form class="source-import" aria-label="Open another source file or local project">
+      <form class="source-import" :aria-label="desktop ? 'Open another source file or local project' : 'Open another source file'">
         <p class="source-import__status" :class="`source-import__status--${importStatus}`" aria-live="polite">
           {{ importMessage }}
         </p>
@@ -368,17 +288,9 @@ function syncDocumentTitle(workspaceTitle: string): void {
             @change="importSourceFile"
           />
         </label>
-        <div class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
+        <div v-if="desktop" class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Open another project</span>
-          <button type="button" :disabled="isImporting" @click="openProjectFolderPicker">Open local folder</button>
-          <input
-            ref="projectFolderInput"
-            hidden
-            class="source-import__hidden-input"
-            type="file"
-            webkitdirectory
-            multiple
-          />
+          <button type="button" :disabled="isImporting" @click="openNativeWorkspacePicker">Open local folder</button>
         </div>
         <button type="button" :disabled="isImporting" @click="loadBuiltInSample">Load built-in sample</button>
         <div class="source-import__examples" aria-label="Public project examples">

@@ -6,14 +6,14 @@ Dimension will open real local workspaces through a native desktop host, map the
 
 ## Product Direction
 
-Dimension is moving from browser folder-upload flows to an Electron desktop workspace:
+Dimension is an Electron desktop workspace:
 
 - native folder selection and a durable local workspace root
 - Vue renderer with narrowly scoped, typed desktop IPC
 - Node/ts-morph graph analysis against local files
 - future Git, terminal, and language-service integrations
 
-Workspace metadata belongs outside the opened repository. Browser ZIP or repository imports may remain sharing/viewing paths, but are not the primary IDE workflow.
+Workspace metadata belongs outside the opened repository.
 
 ## Recommended IDE Setup
 

@@ -1,6 +1,6 @@
 import { type Request, type Response, Router } from "express"
 
-import uploadMiddleware from "@/middlewares/upload-middleware"
+import sourceFileUploadMiddleware from "@/middlewares/source-file-upload-middleware"
 
 import { GraphsController } from "@/controllers"
 
@@ -10,6 +10,6 @@ router.get("/", (_req: Request, res: Response) => {
   res.send("Hello World!")
 })
 
-router.post("/graphs/project", uploadMiddleware.array("files"), GraphsController.createProject)
+router.post("/graphs/source", sourceFileUploadMiddleware.single("file"), GraphsController.createSource)
 
 export default router
