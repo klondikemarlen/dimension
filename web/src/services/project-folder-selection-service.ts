@@ -12,7 +12,7 @@ export type FolderSelection =
   | { kind: "unsupported" }
   | { kind: "failed"; message: string }
 type NativeDirectoryPicker = () => Promise<ProjectDirectoryHandle>
-type SelectionProgress = (rootName: string, fileCount: number) => void | Promise<void>
+export type FolderSelectionProgress = (rootName: string, fileCount: number) => void | Promise<void>
 
 export function nativeDirectoryPicker(browserWindow: Window): NativeDirectoryPicker | undefined {
   const picker = (browserWindow as Window & { showDirectoryPicker?: NativeDirectoryPicker }).showDirectoryPicker
@@ -22,7 +22,7 @@ export function nativeDirectoryPicker(browserWindow: Window): NativeDirectoryPic
 
 export async function selectNativeDirectory(
   picker: NativeDirectoryPicker,
-  onProgress?: SelectionProgress,
+  onProgress?: FolderSelectionProgress,
 ): Promise<FolderSelection> {
   try {
     const directory = await picker()
@@ -50,7 +50,22 @@ export function selectionFromFolderInput(files: FileList | null): FolderSelectio
   }
 }
 
-export function openFolderInput(input: HTMLInputElement): void {
-  input.value = ""
+export function selectFolderInput(input: HTMLInputElement | undefined): Promise<FolderSelection> {
+  if (!input) return Promise.resolve({ kind: "unsupported" })
+
+  const { promise, resolve } = Promise.withResolvers<FolderSelection>()
+  const settle = (selection: FolderSelection): void => {
+    input.removeEventListener("change", changed)
+    input.removeEventListener("cancel", canceled)
+    input.value = ""
+    resolve(selection)
+  }
+  const changed = (): void => settle(selectionFromFolderInput(input.files))
+  const canceled = (): void => settle({ kind: "canceled" })
+
+  input.addEventListener("change", changed)
+  input.addEventListener("cancel", canceled)
   input.click()
+
+  return promise
 }

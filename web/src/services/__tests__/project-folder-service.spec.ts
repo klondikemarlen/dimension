@@ -9,6 +9,7 @@ import {
   type LocalProjectFile,
 } from "../project-folder-service.ts"
 import { selectNativeDirectory, selectionFromFolderInput } from "../project-folder-selection-service.ts"
+import { runProjectImport } from "../project-import-workflow-service.ts"
 
 function projectFile(path: string, size = 1): File {
   const parts = path.split("/")
@@ -106,6 +107,37 @@ assert.deepEqual(await selectNativeDirectory(async () => Promise.reject(new DOME
   kind: "canceled",
 })
 assert.deepEqual(selectionFromFolderInput(null), { kind: "canceled" })
+
+const workflowPhases: string[] = []
+let requestedPathCount = 0
+const workflowResult = await runProjectImport(
+  async () => ({ kind: "selected", rootName: "workflow-project", files: directoryFiles }),
+  async (phase) => workflowPhases.push(phase.kind),
+  async (_rootName, plan) => {
+    requestedPathCount = plan.files.length
+    return { nodes: [{ id: "folder:workflow-project", label: "workflow-project", type: "folder" }], links: [] }
+  },
+)
+assert.equal(workflowResult.kind, "success")
+if (workflowResult.kind === "success") {
+  assert.equal(workflowResult.plan.files.length, requestedPathCount)
+  assert.equal(workflowResult.graph.nodes[0]?.label, "workflow-project")
+}
+assert.deepEqual(workflowPhases, ["selecting", "reading", "planning", "requesting"])
+
+const canceledWorkflow = await runProjectImport(
+  async () => ({ kind: "canceled" }),
+  async () => undefined,
+  async () => ({ nodes: [], links: [] }),
+)
+assert.deepEqual(canceledWorkflow, { kind: "canceled" })
+
+const failedWorkflow = await runProjectImport(
+  async () => ({ kind: "failed", message: "Picker failed" }),
+  async () => undefined,
+  async () => ({ nodes: [], links: [] }),
+)
+assert.deepEqual(failedWorkflow, { kind: "failed", message: "Picker failed" })
 
 const singleSourceGraph = createProjectPreviewGraphFromFiles("Selected source", [
   { file: projectFile("app.ts"), path: "app.ts" },
