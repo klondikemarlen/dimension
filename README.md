@@ -32,6 +32,12 @@ The project uses the checked-in Docker Compose wrapper. `bin/dev up` writes rand
 ./bin/dev down
 ```
 
+Run the desktop host in a second terminal after the web service is ready:
+
+```sh
+./bin/dev desktop
+```
+
 PlantUML is behind the `design` Compose profile:
 
 ```sh

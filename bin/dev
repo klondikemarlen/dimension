@@ -91,6 +91,15 @@ class DevHelper
     run(*%w[web], *args, **kwargs)
   end
 
+  def desktop(*args)
+    ensure_development_ports!
+    web_origin = "http://127.0.0.1:#{development_port("DIMENSION_WEB_PORT", 58501)}"
+
+    Dir.chdir(project_root) do
+      exec({ "DIMENSION_WEB_ORIGIN" => web_origin }, "npm", "run", "desktop", "--", *args)
+    end
+  end
+
   def check_types(*args, **kwargs)
     run(*%w[api npm run check-types], *args, **kwargs)
   end
