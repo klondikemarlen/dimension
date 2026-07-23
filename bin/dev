@@ -2,6 +2,9 @@
 
 require_relative "./github_api"
 require_relative "./pull-request-editor"
+require "net/http"
+require "uri"
+
 require "socket"
 
 class DevHelper
@@ -21,12 +24,19 @@ class DevHelper
   WAIT_FOR_PROCESS = "wait_for_process"
 
   PORT_ENV_FILE = ".dev-ports.env"
+  BOOT_TIMEOUT_SECONDS = 30
   PORT_ENV_KEYS = %w[
     DIMENSION_API_PORT
     DIMENSION_API_DEBUG_PORT
     DIMENSION_WEB_PORT
     DIMENSION_PLANTUML_PORT
   ].freeze
+  SERVICE_PORT_MAP = {
+    "DIMENSION_API_PORT" => ["api", 3000],
+    "DIMENSION_API_DEBUG_PORT" => ["api", 9229],
+    "DIMENSION_WEB_PORT" => ["web", 5173],
+    "DIMENSION_PLANTUML_PORT" => ["plantuml", 8080],
+  }.freeze
 
   # External Interface
   def self.call(*args)
@@ -58,7 +68,13 @@ class DevHelper
 
   # Primary command wrappers
   def build(*args, **kwargs)
-    compose(%w[build], *args, **kwargs)
+    ensure_development_ports!
+    compose(*%w[build], *args, **kwargs)
+  end
+
+  def run(*args, **kwargs)
+    ensure_development_ports!
+    compose(*%w[run --rm], *args, **kwargs)
   end
 
   def up(*args, **kwargs)
@@ -74,9 +90,6 @@ class DevHelper
     compose(*%w[logs -f], *args, **kwargs)
   end
 
-  def run(*args, **kwargs)
-    compose(*%w[run --rm], *args, **kwargs)
-  end
 
   def ps(*args, **kwargs)
     compose(*%w[ps], *args, **kwargs)
@@ -92,12 +105,15 @@ class DevHelper
   end
 
   def desktop(*args)
-    ensure_development_ports!
-    web_origin = "http://127.0.0.1:#{development_port("DIMENSION_WEB_PORT", 58501)}"
+    ensure_desktop_renderer!
 
     Dir.chdir(project_root) do
-      exec({ "DIMENSION_WEB_ORIGIN" => web_origin }, "npm", "run", "desktop", "--", *args)
+      exec("npm", "run", "desktop", "--", *args)
     end
+  end
+
+  def boot(*args)
+    desktop(*args)
   end
 
   def check_types(*args, **kwargs)
@@ -279,18 +295,87 @@ class DevHelper
   end
 
   def ensure_development_ports!
-    return if File.exist?(port_env_file_path) && (compose_project_running? || persisted_development_ports_available?)
+    current_ports = read_port_environment
 
-    servers = PORT_ENV_KEYS.map { TCPServer.new("127.0.0.1", 0) }
-    assignments = PORT_ENV_KEYS.zip(servers.map { |server| server.addr[1] })
+    if compose_project_running?
+      discovered_ports = discover_running_service_ports
 
-    File.write(
-      port_env_file_path,
-      assignments.map { |key, port| "#{key}=#{port}" }.join("\n") + "\n",
-    )
-    puts "Wrote random development ports to #{port_env_file_path}"
+      if discovered_ports.any?
+        current_ports = current_ports.merge(discovered_ports)
+        missing_keys = PORT_ENV_KEYS.reject { |key| current_ports[key] }
+
+        if missing_keys.any?
+          current_ports.merge!(allocate_free_ports(missing_keys))
+          puts "Recreated missing development ports from running services in #{port_env_file_path}: #{missing_keys.join(", ")}"
+        else
+          puts "Synchronized development ports from running services in #{port_env_file_path}"
+        end
+
+        current_ports["LOCAL_UID"] = user_id
+        current_ports["LOCAL_GID"] = group_id
+        persist_development_ports(current_ports)
+        return
+      end
+    end
+
+    if PORT_ENV_KEYS.all? { |key| current_ports.key?(key) } && persisted_development_ports_available?(current_ports)
+      current_ports["LOCAL_UID"] = user_id
+      current_ports["LOCAL_GID"] = group_id
+      persist_development_ports(current_ports)
+      puts "Using existing development ports and host UID/GID in #{port_env_file_path}"
+      return
+    end
+
+    assignments = allocate_free_ports(PORT_ENV_KEYS)
+    assignments["LOCAL_UID"] = user_id
+    assignments["LOCAL_GID"] = group_id
+
+    persist_development_ports(assignments)
+    puts "Wrote development ports and host UID/GID to #{port_env_file_path}"
+  end
+
+  def discover_running_service_ports
+    SERVICE_PORT_MAP.each_with_object({}) do |(key, details), discovered|
+      service_name, container_port = details
+      container_id = `#{compose_command(*%w[ps -q], service_name, environment: "development")}`.strip
+      next if container_id.empty?
+
+      container_port_mappings = `docker port #{container_id} #{container_port}/tcp`
+      container_port_mappings.lines.each do |line|
+        if (match = line.strip.match(/:(\d+)$/))
+          discovered[key] = match[1]
+          break
+        end
+      end
+    end
+  end
+
+  def allocate_free_ports(keys)
+    return {} if keys.empty?
+
+    servers = keys.map { TCPServer.new("127.0.0.1", 0) }
+    keys.zip(servers.map { |server| server.addr[1] }).to_h
   ensure
     servers&.each(&:close)
+  end
+
+  def read_port_environment
+    return {} unless File.exist?(port_env_file_path)
+
+    File.readlines(port_env_file_path).each_with_object({}) do |line, env|
+      key, value = line.strip.split("=", 2)
+      next unless key && value
+      env[key] = value
+    end
+  end
+
+  def persist_development_ports(ports)
+    File.write(
+      port_env_file_path,
+      (PORT_ENV_KEYS + %w[LOCAL_UID LOCAL_GID]).map do |key|
+        "#{key}=#{ports[key]}"
+      end.join("\n") + "\n",
+    )
   end
 
   def port_env_file_path
@@ -311,18 +396,16 @@ class DevHelper
   end
 
   def compose_project_running?
-    command = "cd #{project_root} && docker compose --env-file #{port_env_file_path} -f docker-compose.development.yml ps -q --status=running"
-
+    command = compose_command(*%w[ps -q --status=running], environment: "development")
     !`#{command}`.strip.empty?
   end
 
-  def persisted_development_ports_available?
-    ports = File.readlines(port_env_file_path).filter_map do |line|
-      key, value = line.strip.split("=", 2)
-      value.to_i if PORT_ENV_KEYS.include?(key)
-    end
+  def persisted_development_ports_available?(ports = nil)
+    values = ports || read_port_environment
+    persisted_ports = PORT_ENV_KEYS.filter_map { |key| values[key].to_i if values[key] }
+    return false if persisted_ports.length != PORT_ENV_KEYS.length
 
-    ports.length == PORT_ENV_KEYS.length && ports.uniq.length == ports.length && ports.all? { |port| port_available?(port) }
+    persisted_ports.length == persisted_ports.uniq.length && persisted_ports.all? { |port| port_available?(port) }
   end
 
   def port_available?(port)
@@ -332,6 +415,58 @@ class DevHelper
     false
   ensure
     server&.close
+  end
+
+  def ensure_desktop_renderer!
+    Dir.chdir(project_root) do
+      command = ["npm", "run", "build:desktop"]
+      puts "Running: #{command.join(" ")}"
+      raise ScriptError, "Dimension desktop renderer failed to build." unless system(*command)
+    end
+  end
+
+  def start_development_services!
+    command = compose_command(*%w[up -d --remove-orphans])
+    puts "Running: #{command}"
+    raise ScriptError, "Dimension services failed to start." unless system(command)
+  end
+
+  def web_origin
+    "http://127.0.0.1:#{development_port("DIMENSION_WEB_PORT", 58501)}"
+  end
+
+
+  def wait_for_web_renderer!
+    target = web_origin()
+    uri = URI(target)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + BOOT_TIMEOUT_SECONDS
+
+    loop do
+      begin
+        remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        break if remaining <= 0
+
+        timeout_seconds = [remaining, 1].min
+        response = Net::HTTP.start(
+          uri.host,
+          uri.port,
+          open_timeout: timeout_seconds,
+          read_timeout: timeout_seconds,
+        ) do |http|
+          http.get(uri.request_uri)
+        end
+
+        return if response.is_a?(Net::HTTPSuccess)
+      rescue Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ECONNRESET, EOFError, Net::OpenTimeout, Net::ReadTimeout, SocketError
+        # Vite has not started yet.
+      end
+
+      break if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= deadline
+
+      sleep 0.25
+    end
+
+    raise ScriptError, "Dimension web renderer was not ready at #{target} after #{BOOT_TIMEOUT_SECONDS} seconds."
   end
 
   def take_over_needed?(file_or_directory)
