@@ -1,10 +1,14 @@
 const { app, BrowserWindow, dialog, ipcMain } = require("electron")
 const path = require("node:path")
+const { pathToFileURL } = require("node:url")
 
+const { createSourceGraph } = require("../api/src/services/graphs/create-service.cjs")
 const { openWorkspace } = require("./workspace.cjs")
 
-const rendererUrl = new URL(process.env.DIMENSION_WEB_ORIGIN)
-const rendererOrigin = rendererUrl.origin
+const rendererUrl = process.env.DIMENSION_WEB_ORIGIN
+  ? new URL(process.env.DIMENSION_WEB_ORIGIN)
+  : pathToFileURL(path.join(__dirname, "..", "web", "dist", "index.html"))
+const rendererOrigin = rendererUrl.protocol === "file:" ? undefined : rendererUrl.origin
 
 async function createWindow() {
   const window = new BrowserWindow({
@@ -21,20 +25,45 @@ async function createWindow() {
 
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }))
   window.webContents.on("will-navigate", (event, url) => {
-    if (new URL(url).origin !== rendererOrigin) event.preventDefault()
+    const nextUrl = new URL(url)
+    const isAllowedFileNavigation =
+      rendererUrl.protocol === "file:" && nextUrl.protocol === "file:" && nextUrl.pathname === rendererUrl.pathname
+    const isAllowedWebNavigation = Boolean(rendererOrigin && nextUrl.origin === rendererOrigin)
+
+    if (!isAllowedFileNavigation && !isAllowedWebNavigation) event.preventDefault()
   })
 
   await window.loadURL(rendererUrl.href)
 
   if (process.env.DIMENSION_DESKTOP_SMOKE_TEST) {
-    const [runtime, hasWorkspacePicker] = await window.webContents.executeJavaScript(
-      "Promise.all([window.dimensionDesktop.runtime(), typeof window.dimensionDesktop.openWorkspace === 'function'])",
+    const [runtime, hasWorkspacePicker, hasSourceFilePicker] = await window.webContents.executeJavaScript(
+      "Promise.all([window.dimensionDesktop.runtime(), typeof window.dimensionDesktop.openWorkspace === 'function', typeof window.dimensionDesktop.openSourceFile === 'function'])",
     )
 
-    if (runtime.platform !== process.platform || !hasWorkspacePicker) {
+    if (runtime.platform !== process.platform || !hasWorkspacePicker || !hasSourceFilePicker) {
       throw new Error("Desktop preload bridge is unavailable.")
     }
     app.exit()
+  }
+}
+
+async function openSourceFile() {
+  const selection = await dialog.showOpenDialog({
+    title: "Open Dimension source file",
+    properties: ["openFile"],
+    filters: [{ name: "Source files", extensions: ["js", "jsx", "ts", "tsx", "rb"] }],
+  })
+
+  if (selection.canceled || !selection.filePaths[0]) return { kind: "canceled" }
+
+  const sourcePath = selection.filePaths[0]
+
+  return {
+    kind: "selected",
+    source: {
+      name: path.basename(sourcePath),
+      graph: createSourceGraph(sourcePath),
+    },
   }
 }
 
@@ -45,6 +74,7 @@ app
     ipcMain.handle("dimension:open-workspace", () =>
       openWorkspace({ dialog, userDataPath: app.getPath("userData") }),
     )
+    ipcMain.handle("dimension:open-source-file", openSourceFile)
     await createWindow()
 
     app.on("activate", () => {

@@ -7,6 +7,15 @@ declare global {
     graph: SourceGraph
   }
 
+  interface DimensionDesktopSource {
+    name: string
+    graph: SourceGraph
+  }
+
+  type DimensionDesktopSourceResult =
+    | { kind: "canceled" }
+    | { kind: "selected"; source: DimensionDesktopSource }
+
   type DimensionDesktopWorkspaceResult =
     | { kind: "canceled" }
     | { kind: "selected"; workspace: DimensionDesktopWorkspace }
@@ -15,6 +24,7 @@ declare global {
     dimensionDesktop?: {
       runtime: () => Promise<{ platform: string }>
       openWorkspace: () => Promise<DimensionDesktopWorkspaceResult>
+      openSourceFile: () => Promise<DimensionDesktopSourceResult>
     }
   }
 }
