@@ -164,6 +164,11 @@ function fromSpecifier(source, index) {
       cursor = skipComment(source, cursor)
       continue
     }
+
+    if (source[cursor] === "/" && isRegexStart(source, cursor)) {
+      cursor = skipRegex(source, cursor)
+      continue
+    }
     if (source[cursor] === "'" || source[cursor] === '"' || source[cursor] === "`") {
       cursor = skipString(source, cursor)
       continue

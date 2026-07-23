@@ -39,7 +39,7 @@ test("adds local import links without changing folder containment", async (t) =>
   await mkdir(join(projectRoot, "src", "formatters"), { recursive: true })
   await writeFile(
     join(projectRoot, "src", "app.ts"),
-    '// import { ignored } from "./ignored"\n/* require("./ignored") */\nconst pattern = /import(".\\/ignored")/\nfunction matches() { return /import(".\\/ignored")/ }\nimport {\n  format,\n} from "./formatters"\nimport { release } from "./release.test"\n',
+    '// import { ignored } from "./ignored"\n/* require("./ignored") */\nconst pattern = /import(".\\/ignored")/\nfunction matches() { return /import(".\\/ignored")/ }\nexport const exportedPattern = /from ".\\/ignored"/\nimport {\n  format,\n} from "./formatters"\nimport { release } from "./release.test"\n',
   )
   await writeFile(join(projectRoot, "src", "formatters", "index.ts"), "export const format = () => true\n")
   await writeFile(join(projectRoot, "src", "ignored.ts"), "export const ignored = true\n")
