@@ -109,6 +109,11 @@ function importedSpecifiers(source) {
       continue
     }
 
+    if (character === "/" && isRegexStart(source, index)) {
+      index = skipRegex(source, index)
+      continue
+    }
+
     if (character === "'" || character === '"' || character === "`") {
       index = skipString(source, index)
       continue
@@ -227,6 +232,48 @@ function skipString(source, index) {
       continue
     }
     if (source[cursor] === quote) return cursor + 1
+  }
+
+  return source.length
+}
+
+// ponytail: this is a scoped import-hint lexer; use a full parser only if relationship extraction needs complete JavaScript syntax coverage.
+function isRegexStart(source, index) {
+  let previousIndex = index - 1
+
+  while (previousIndex >= 0 && /\s/.test(source[previousIndex])) previousIndex -= 1
+  if (previousIndex < 0 || "=(:,[!&|?;{}+-*%^~<>".includes(source[previousIndex])) return true
+  if (!isIdentifierCharacter(source[previousIndex])) return false
+
+  let wordStart = previousIndex
+  while (wordStart > 0 && isIdentifierCharacter(source[wordStart - 1])) wordStart -= 1
+
+  return ["await", "case", "delete", "do", "else", "in", "instanceof", "new", "of", "return", "throw", "typeof", "void", "yield"].includes(
+    source.slice(wordStart, previousIndex + 1),
+  )
+}
+
+function skipRegex(source, index) {
+  let inCharacterClass = false
+
+  for (let cursor = index + 1; cursor < source.length; cursor++) {
+    if (source[cursor] === "\\") {
+      cursor += 1
+      continue
+    }
+    if (source[cursor] === "[") {
+      inCharacterClass = true
+      continue
+    }
+    if (source[cursor] === "]") {
+      inCharacterClass = false
+      continue
+    }
+    if (source[cursor] === "/" && !inCharacterClass) {
+      while (/[A-Za-z]/.test(source[cursor + 1])) cursor += 1
+      return cursor + 1
+    }
+    if (source[cursor] === "\n") return cursor + 1
   }
 
   return source.length
