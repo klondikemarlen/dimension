@@ -40,6 +40,7 @@ const selectedExampleId = ref<string | undefined>(persistedWorkspace?.exampleId)
 const selectedNodeId = ref<string | undefined>(persistedWorkspace?.selectedNodeId)
 const importStatus = ref<"idle" | "loading" | "success" | "error">(persistedWorkspace ? "success" : "idle")
 const importMessage = ref(persistedWorkspace?.message ?? defaultImportMessage)
+
 const isImporting = computed(() => importStatus.value === "loading")
 const graphNodeCount = computed(() => sourceGraph.value?.nodes.length ?? usersControllerIndexDiagram.nodes.length)
 const graphLinkCount = computed(() => sourceGraph.value?.links.length ?? usersControllerIndexDiagram.edges.length)
@@ -55,6 +56,34 @@ const currentDiagram = computed<SpellDiagram>(() => {
 })
 const selectedNode = computed(() => currentDiagram.value.nodes.find((node) => node.id === selectedNodeId.value))
 const selectedConnections = computed(() => connectedNodes(currentDiagram.value, selectedNode.value))
+const relatedGroups = computed(() => {
+  const groups = new Map<string, { id: string; label: string; count: number; representativeNodeId: string }>()
+
+  currentDiagram.value.nodes.forEach((node) => {
+    if (!node.group) return
+
+    const existing = groups.get(node.group)
+    if (existing) {
+      existing.count += 1
+      return
+    }
+
+    groups.set(node.group, {
+      id: node.group,
+      label: node.groupLabel?.trim() || `Related ${node.kind} group`,
+      count: 1,
+      representativeNodeId: node.id,
+    })
+  })
+
+  return [...groups.values()].sort((left, right) => right.count - left.count)
+})
+const relatedGroupsLabel = computed(() =>
+  relatedGroups.value.length
+    ? `${relatedGroups.value.length} relationship group${relatedGroups.value.length === 1 ? "" : "s"}`
+    : "No groups",
+)
+
 syncDocumentTitle(diagramTitle.value)
 
 function loadBuiltInSample(): void {
@@ -130,18 +159,17 @@ async function openNativeWorkspace(desktop: NonNullable<Window["dimensionDesktop
     setWorkspace({
       graph: workspace.graph,
       title: workspace.name,
-      subtitle: "Native workspace with local folder/file hierarchy.",
+      subtitle: "Native workspace with local folder hierarchy and JavaScript/TypeScript import relationships.",
       sourceName: workspace.name,
       sourceUrl: undefined,
       selectedNodeId: selectedId,
-      message: `Mapped ${firstLayerCount} first-layer item${firstLayerCount === 1 ? "" : "s"} from ${workspace.name}; the local workspace root stays in the desktop host.`,
+      message: `Mapped ${firstLayerCount} first-layer item${firstLayerCount === 1 ? "" : "s"} from ${workspace.name}; Dimension reads local JavaScript/TypeScript import declarations in the desktop host, and source files stay on this device.`,
     })
   } catch (error) {
     importStatus.value = "error"
     importMessage.value = error instanceof Error ? error.message : "Dimension could not open the selected folder."
   }
 }
-
 
 function selectNode(id: string): void {
   selectedNodeId.value = id
@@ -180,13 +208,13 @@ function persistCurrentWorkspace(): void {
 }
 
 function firstLayerNodeId(graph: SourceGraph): string | undefined {
-  return graph.nodes.find((node) => node.type === "class" || node.type === "folder")?.id ?? graph.nodes[0]?.id
+  return graph.nodes.find((node) => node.type === "class" || node.type === "file" || node.type === "folder")?.id ?? graph.nodes[0]?.id
 }
 
 function directChildCount(graph: SourceGraph, nodeId: string | undefined): number {
   if (!nodeId) return 0
 
-  return graph.links.filter((link) => link.source === nodeId).length
+  return graph.links.filter((link) => link.source === nodeId && link.kind !== "imports").length
 }
 
 function connectedNodes(diagram: SpellDiagram, node: RuneNode | undefined): RuneNode[] {
@@ -201,7 +229,6 @@ function connectedNodes(diagram: SpellDiagram, node: RuneNode | undefined): Rune
 
   return diagram.nodes.filter((candidate) => connectionIds.has(candidate.id))
 }
-
 
 function readPersistedWorkspace(): PersistedWorkspace | undefined {
   try {
@@ -325,6 +352,17 @@ function syncDocumentTitle(workspaceTitle: string): void {
           <dd>{{ graphLinkCount }}</dd>
         </div>
       </dl>
+      <section class="relationship-groups" aria-label="Relationship groups">
+        <p class="eyebrow">{{ relatedGroupsLabel }}</p>
+        <ul v-if="relatedGroups.length" class="relationship-groups__chips">
+          <li v-for="group in relatedGroups" :key="group.id">
+            <button type="button" :disabled="isImporting" @click="selectNode(group.representativeNodeId)">
+              {{ group.label }} ({{ group.count }})
+            </button>
+          </li>
+        </ul>
+        <p v-else class="relationship-groups__empty">No relationship groups are currently visible in this map.</p>
+      </section>
     </section>
 
     <section class="inspection-pane" aria-label="Dimension graph inspection">

@@ -1,6 +1,6 @@
 export type RuneKind = "method" | "local" | "policy" | "async" | "response" | "error" | "context"
 
-export type EdgeKind = "data" | "error" | "response" | "context"
+export type EdgeKind = "data" | "error" | "response" | "context" | "import"
 
 export interface RuneNode {
   id: string
@@ -9,8 +9,11 @@ export interface RuneNode {
   x: number
   y: number
   radius: number
-  ring?: "solid" | "dashed" | "focus"
   isSelected?: boolean
+  ring?: "solid" | "dashed" | "focus"
+  collisionRadius?: number
+  group?: string
+  groupLabel?: string
 }
 
 export interface LeylineEdge {
