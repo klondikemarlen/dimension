@@ -5,8 +5,6 @@ const { basename, dirname, extname, join, normalize, relative } = require("node:
 const GENERATED_DIRECTORIES = new Set([".git", ".vite", "coverage", "dist", "node_modules"])
 const IMPORTABLE_EXTENSIONS = new Set([".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"])
 const IMPORT_PATH_EXTENSIONS = [...IMPORTABLE_EXTENSIONS]
-const IMPORT_SPECIFIER_PATTERN =
-  /\b(?:import|export)\s+(?:[^'"]*?\s+from\s+)?["']([^'"]+)["']|\b(?:import|require)\s*\(\s*["']([^'"]+)["']\s*\)/g
 const MAX_PROJECT_PATHS = 15_000
 
 async function openWorkspace({ dialog, userDataPath }) {
@@ -103,12 +101,145 @@ async function addImportLinks(fileNodes, links) {
 function importedSpecifiers(source) {
   const specifiers = []
 
-  for (const match of source.matchAll(IMPORT_SPECIFIER_PATTERN)) {
-    const specifier = match[1] ?? match[2]
-    if (specifier?.startsWith(".")) specifiers.push(specifier)
+  for (let index = 0; index < source.length; ) {
+    const character = source[index]
+
+    if (character === "/" && (source[index + 1] === "/" || source[index + 1] === "*")) {
+      index = skipComment(source, index)
+      continue
+    }
+
+    if (character === "'" || character === '"' || character === "`") {
+      index = skipString(source, index)
+      continue
+    }
+
+    if (!isIdentifierCharacter(character)) {
+      index += 1
+      continue
+    }
+
+    const wordEnd = identifierEnd(source, index)
+    const word = source.slice(index, wordEnd)
+    const match =
+      word === "import"
+        ? importSpecifier(source, wordEnd)
+        : word === "export"
+          ? fromSpecifier(source, wordEnd)
+          : word === "require"
+            ? requireSpecifier(source, wordEnd)
+            : undefined
+
+    if (match?.specifier.startsWith(".")) specifiers.push(match.specifier)
+    index = match?.end ?? wordEnd
   }
 
   return specifiers
+}
+
+function importSpecifier(source, index) {
+  const nextIndex = nextCodeIndex(source, index)
+
+  if (source[nextIndex] === "(") return quotedSpecifier(source, nextCodeIndex(source, nextIndex + 1))
+  if (source[nextIndex] === "'" || source[nextIndex] === '"') return quotedSpecifier(source, nextIndex)
+
+  return fromSpecifier(source, nextIndex)
+}
+
+function requireSpecifier(source, index) {
+  const nextIndex = nextCodeIndex(source, index)
+
+  return source[nextIndex] === "(" ? quotedSpecifier(source, nextCodeIndex(source, nextIndex + 1)) : undefined
+}
+
+function fromSpecifier(source, index) {
+  for (let cursor = index; cursor < source.length; ) {
+    if (source[cursor] === ";") return undefined
+    if (source[cursor] === "/" && (source[cursor + 1] === "/" || source[cursor + 1] === "*")) {
+      cursor = skipComment(source, cursor)
+      continue
+    }
+    if (source[cursor] === "'" || source[cursor] === '"' || source[cursor] === "`") {
+      cursor = skipString(source, cursor)
+      continue
+    }
+    if (!isIdentifierCharacter(source[cursor])) {
+      cursor += 1
+      continue
+    }
+
+    const wordEnd = identifierEnd(source, cursor)
+    if (source.slice(cursor, wordEnd) === "from") return quotedSpecifier(source, nextCodeIndex(source, wordEnd))
+    cursor = wordEnd
+  }
+}
+
+function quotedSpecifier(source, index) {
+  const quote = source[index]
+  if (quote !== "'" && quote !== '"') return undefined
+
+  let specifier = ""
+  for (let cursor = index + 1; cursor < source.length; cursor++) {
+    if (source[cursor] === "\\") {
+      specifier += source[cursor + 1] ?? ""
+      cursor += 1
+      continue
+    }
+    if (source[cursor] === quote) return { specifier, end: cursor + 1 }
+    specifier += source[cursor]
+  }
+}
+
+function nextCodeIndex(source, index) {
+  let cursor = index
+
+  while (cursor < source.length) {
+    if (/\s/.test(source[cursor])) {
+      cursor += 1
+      continue
+    }
+    if (source[cursor] === "/" && (source[cursor + 1] === "/" || source[cursor + 1] === "*")) {
+      cursor = skipComment(source, cursor)
+      continue
+    }
+    break
+  }
+
+  return cursor
+}
+
+function skipComment(source, index) {
+  if (source[index + 1] === "/") {
+    const newlineIndex = source.indexOf("\n", index + 2)
+    return newlineIndex === -1 ? source.length : newlineIndex + 1
+  }
+
+  const commentEnd = source.indexOf("*/", index + 2)
+  return commentEnd === -1 ? source.length : commentEnd + 2
+}
+
+function skipString(source, index) {
+  const quote = source[index]
+
+  for (let cursor = index + 1; cursor < source.length; cursor++) {
+    if (source[cursor] === "\\") {
+      cursor += 1
+      continue
+    }
+    if (source[cursor] === quote) return cursor + 1
+  }
+
+  return source.length
+}
+
+function identifierEnd(source, index) {
+  let cursor = index
+  while (isIdentifierCharacter(source[cursor])) cursor += 1
+  return cursor
+}
+
+function isIdentifierCharacter(character) {
+  return Boolean(character) && /[A-Za-z0-9_$]/.test(character)
 }
 
 function importedFileId(sourcePath, specifier, nodeIdByPath) {
