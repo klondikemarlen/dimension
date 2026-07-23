@@ -106,6 +106,37 @@ async function importSourceFile(event: Event): Promise<void> {
   }
 }
 
+async function openNativeSourceFile(): Promise<void> {
+  if (!desktop || isImporting.value) return
+
+  importStatus.value = "loading"
+  importMessage.value = "Opening your local source-file picker…"
+
+  try {
+    const result = await desktop.openSourceFile()
+    if (result.kind === "canceled") {
+      importStatus.value = "error"
+      importMessage.value = "Source-file selection was canceled. No project was opened."
+      return
+    }
+
+    const { source } = result
+    const selectedId = source.graph.nodes[0]?.id
+    setWorkspace({
+      graph: source.graph,
+      title: source.name,
+      subtitle: "Locally parsed TypeScript, JavaScript, or Ruby source map.",
+      sourceName: source.name,
+      sourceUrl: undefined,
+      selectedNodeId: selectedId,
+      message: `Mapped ${source.graph.nodes.length} code part${source.graph.nodes.length === 1 ? "" : "s"} from ${source.name}; the source stays on this device.`,
+    })
+  } catch (error) {
+    importStatus.value = "error"
+    importMessage.value = error instanceof Error ? error.message : "Dimension could not open the selected source file."
+  }
+}
+
 async function openNativeWorkspacePicker(): Promise<void> {
   if (!desktop || isImporting.value) return
 
@@ -274,7 +305,7 @@ function syncDocumentTitle(workspaceTitle: string): void {
         <p class="source-import__status" :class="`source-import__status--${importStatus}`" aria-live="polite">
           {{ importMessage }}
         </p>
-        <label class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
+        <label v-if="!desktop" class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Source file</span>
           <span class="source-import__control">
             <span class="source-import__button">Browse source file</span>
@@ -288,6 +319,10 @@ function syncDocumentTitle(workspaceTitle: string): void {
             @change="importSourceFile"
           />
         </label>
+        <div v-if="desktop" class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
+          <span>Open local source</span>
+          <button type="button" :disabled="isImporting" @click="openNativeSourceFile">Open source file</button>
+        </div>
         <div v-if="desktop" class="source-import__field" :class="{ 'source-import__field--disabled': isImporting }">
           <span>Open another project</span>
           <button type="button" :disabled="isImporting" @click="openNativeWorkspacePicker">Open local folder</button>
