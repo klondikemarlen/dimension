@@ -2,7 +2,9 @@
   "name": "dimension-development-tooling",
   "private": true,
   "scripts": {
-    "desktop": "electron desktop/main.cjs"
+    "desktop": "electron --no-sandbox desktop/main.cjs",
+    "build:desktop": "DIMENSION_DESKTOP_BUILD=1 npm --prefix web run build",
+    "desktop:smoke": "npm run build:desktop && DIMENSION_DESKTOP_SMOKE_TEST=1 electron --no-sandbox desktop/main.cjs"
   },
   "devDependencies": {
     "electron": "^43.2.0",
@@ -11,5 +13,8 @@
     "prettier": "^3.3.3",
     "prettier-plugin-embed": "^0.5.0",
     "prettier-plugin-sql": "^0.19.0"
+  },
+  "dependencies": {
+    "ts-morph": "^28.0.0"
   }
 }

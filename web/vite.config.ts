@@ -7,7 +7,9 @@ import vueDevTools from "vite-plugin-vue-devtools"
 
 const serverApplicationOrigin = process.env.DIMENSION_API_INTERNAL_ORIGIN ?? "http://localhost:3000"
 // https://vite.dev/config/
+const rendererBase = process.env.DIMENSION_DESKTOP_BUILD ? "./" : "/"
 export default defineConfig({
+  base: rendererBase,
   plugins: [vue(), vueDevTools()],
   server: {
     proxy: {
