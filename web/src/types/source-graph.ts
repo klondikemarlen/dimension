@@ -4,9 +4,12 @@ export interface SourceNode {
   type: string
 }
 
+export type SourceLinkKind = "contains" | "imports"
+
 export interface SourceLink {
   source: string
   target: string
+  kind?: SourceLinkKind
 }
 
 export interface SourceGraph {
