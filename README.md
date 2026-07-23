@@ -25,17 +25,25 @@ See [Vite Configuration Reference](https://vitejs.dev/config/).
 
 ## Development
 
-The project uses the checked-in Docker Compose wrapper. `bin/dev up` writes random free host ports to `.dev-ports.env` and reuses them until the file is removed.
+Docker Compose is only for browser/API development. The desktop app builds and runs its renderer and parser locally; it does not require Docker.
+
+Start the standalone Electron workspace with one command:
+
+```sh
+./bin/dev boot
+```
+
+For browser/API-only work:
 
 ```sh
 ./bin/dev up
 ./bin/dev down
 ```
 
-Run the desktop host in a second terminal after the web service is ready:
+`./bin/dev desktop` rebuilds the local renderer and opens Electron without starting containers. The packaged-style smoke check is:
 
 ```sh
-./bin/dev desktop
+npm run desktop:smoke
 ```
 
 PlantUML is behind the `design` Compose profile:
